@@ -21,7 +21,6 @@ defmodule Predicates.DataCase do
       import Ecto
       import Ecto.Changeset
       import Ecto.Query
-      import AssertDatesEqual
       import TestHelper, only: [rand_string: 1, rand_string: 2, rand_boolean: 0, invert_case: 1]
 
       defp disable_logger(_) do
