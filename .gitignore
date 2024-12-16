@@ -24,3 +24,5 @@ predicate_to_ecto_converter-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
+
+config.env
