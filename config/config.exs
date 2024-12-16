@@ -1,6 +1,6 @@
 import Config
 
-config :predicate_to_ecto_converter, Predicates.Repo,
+config :predicate_to_sql, Predicates.Repo,
   ecto_repos: [Predicates.Repo],
   adapter: Ecto.Adapters.Postgres,
   username: System.get_env("TEST_DB_USER") || System.get_env("DB_USER"),

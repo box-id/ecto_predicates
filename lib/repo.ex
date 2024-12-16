@@ -1,6 +1,6 @@
 defmodule Predicates.Repo do
   use Ecto.Repo,
-    otp_app: :predicate_to_ecto_converter,
+    otp_app: :predicate_to_sql,
     adapter: Ecto.Adapters.Postgres
 
   use OK.Pipe
