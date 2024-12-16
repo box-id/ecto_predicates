@@ -3,11 +3,11 @@ on: push
 jobs:
   test:
       runs-on: ubuntu-latest
-      name: Elixir ${{matrix.elixir}} on OTP ${{matrix.otp}}}
+      name: Elixir ${{matrix.elixir}} on OTP ${{matrix.otp}}
       strategy:
         matrix:
-          otp: ["26.x"]
-          elixir: ["1.15.x"]
+          otp: ["27.x"]
+          elixir: ["1.17.x"]
       env:
         MIX_ENV: test
       steps:
@@ -36,4 +36,4 @@ jobs:
             BX_CI_REQ_VERSION: ${{matrix.req}}
 
         - name: Run Tests
-          run: mix test.ci
+          run: mix test
