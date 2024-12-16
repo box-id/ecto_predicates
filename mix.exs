@@ -12,13 +12,6 @@ defmodule PredicateToSQL.MixProject do
     ]
   end
 
-  # Run "mix help compile.app" to learn about applications.
-  def application do
-    [
-      mod: {Predicates.Application, []}
-    ]
-  end
-
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
@@ -28,7 +21,6 @@ defmodule PredicateToSQL.MixProject do
       {:ok, "~> 2.3.0"},
       {:postgrex, "~> 0.15"},
       {:jason, "~> 1.2"},
-      {:ecto_network, "~> 1.3"},
       {:ecto_enum, "~> 1.4"}
     ]
   end

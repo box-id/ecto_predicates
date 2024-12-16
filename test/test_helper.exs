@@ -1,9 +1,10 @@
 ExUnit.start()
 
-Ecto.Adapters.SQL.Sandbox.mode(Predicates.Repo, :manual)
-
 defmodule TestHelper do
   @moduledoc false
+
+  Predicates.Repo.start_link()
+  Ecto.Adapters.SQL.Sandbox.mode(Predicates.Repo, :manual)
 
   def rand_string(
         length,
