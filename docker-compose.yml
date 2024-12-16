@@ -5,7 +5,7 @@ services:
           environment:
               POSTGRES_USER: ${DB_USER}
               POSTGRES_PASSWORD: ${DB_PASSWORD}
-              POSTGRES_DB: ${DB_NAME}
+              POSTGRES_DB: ${DB_DATABASE}
           ports:
               - "${DB_PORT-5432}:5432"
           healthcheck:

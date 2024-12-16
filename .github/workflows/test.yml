@@ -40,8 +40,12 @@ jobs:
           env:
             DB_USER: postgres
             DB_PASSWORD: postgres
-            DB_NAME: test_db
+            DB_DATABASE: test_db
             DB_PORT: 5432
 
         - name: Run Tests
           run: mix test
+          env:
+            DB_USER: postgres
+            DB_PW: postgres
+            DB_DATABASE: test_db
