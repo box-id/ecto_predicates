@@ -36,7 +36,7 @@ jobs:
             BX_CI_REQ_VERSION: ${{matrix.req}}
 
         - name: Setup Database
-          run: docker-compose up -d db
+          run: docker compose up -d db
           env:
             DB_USER: postgres
             DB_PASSWORD: postgres
