@@ -21,7 +21,6 @@ defmodule PredicateToSQL.MixProject do
       {:ok, "~> 2.3.0"},
       {:postgrex, "~> 0.15"},
       {:jason, "~> 1.2"},
-      {:ecto_network, "~> 1.3"},
       {:ecto_enum, "~> 1.4"}
     ]
   end
