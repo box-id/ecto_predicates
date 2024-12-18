@@ -1,4 +1,4 @@
-config :predicate_to_sql, Predicates.Repo,
+config :ecto_predicates, Predicates.Repo,
   adapter: Ecto.Adapters.Postgres,
   username: System.get_env("TEST_DB_USER") || System.get_env("DB_USER"),
   password: System.get_env("TEST_DB_PW") || System.get_env("DB_PW"),

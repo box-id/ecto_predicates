@@ -3,8 +3,8 @@ defmodule PredicateToSQL.MixProject do
 
   def project do
     [
-      app: :predicate_to_sql,
-      version: "0.1.0",
+      app: :ecto_predicates,
+      version: "0.1.1",
       elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
       deps: deps(),

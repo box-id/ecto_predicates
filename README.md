@@ -1,16 +1,16 @@
-# Predicate to SQL Converter
+# Ecto Predicates
 
 **TODO: Add description**
 
 ## Installation
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `predicate_to_sql` to your list of dependencies in `mix.exs`:
+by adding `ecto_predicates` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:predicate_to_sql, "~> 0.1.0"}
+    {:ecto_predicates, "~> 0.1.0"}
   ]
 end
 
@@ -24,4 +24,4 @@ end
 
 Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
 and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at <https://hexdocs.pm/predicate_to_sql>.
+be found at <https://hexdocs.pm/ecto_predicates>.
