@@ -10,4 +10,5 @@ test:
 	echo "Running tests"
 	mix test
 
- 
+ compose-up:
+	docker compose up
