@@ -25,3 +25,27 @@ end
 Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
 and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
 be found at <https://hexdocs.pm/ecto_predicates>.
+
+## Run Test
+
+To run the tests, follow these steps:
+
+1. Copy the example environment configuration file:
+
+```sh
+cp config.env.example config.env
+```
+
+2. Start the necessary services using Docker Compose:
+
+```sh
+make compose-up
+```
+
+3. Run the tests:
+
+```sh
+make test
+```
+
+We are using make here for a easier handling of the shared environment vars in `config.env`
