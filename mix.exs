@@ -16,7 +16,7 @@ defmodule PredicateToSQL.MixProject do
   defp deps do
     [
       {:plug, "~> 1.10"},
-      {:ecto_sql, "~> 3.12.5"},
+      {:ecto_sql, "~> 3.12"},
       {:assertions, "~> 0.20", only: [:dev, :test]},
       {:ok, "~> 2.3.0"},
       {:postgrex, "~> 0.15"},
