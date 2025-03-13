@@ -4,7 +4,7 @@ defmodule PredicateToSQL.MixProject do
   def project do
     [
       app: :ecto_predicates,
-      version: "0.1.1",
+      version: "0.2.0",
       elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -16,7 +16,7 @@ defmodule PredicateToSQL.MixProject do
   defp deps do
     [
       {:plug, "~> 1.10"},
-      {:ecto_sql, "~> 3.11.0"},
+      {:ecto_sql, "~> 3.12"},
       {:assertions, "~> 0.20", only: [:dev, :test]},
       {:ok, "~> 2.3.0"},
       {:postgrex, "~> 0.15"},
