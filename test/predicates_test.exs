@@ -14,6 +14,7 @@ defmodule PredicatesTest do
       field(:name, :string)
       field(:likes, :integer)
       field(:publisher_id, :string)
+      field(:meta, :map, default: %{})
 
       field(:slug, :string, virtual: true)
 
@@ -29,6 +30,7 @@ defmodule PredicatesTest do
         name text,
         likes int DEFAULT 0,
         publisher_id text,
+        meta jsonb DEFAULT '{}',
         author_id int REFERENCES pred_authors(id) ON DELETE CASCADE ON UPDATE CASCADE,
         inserted_at timestamp with time zone NOT NULL default now(),
         updated_at timestamp with time zone NOT NULL default now()
@@ -189,6 +191,14 @@ defmodule PredicatesTest do
 
       assert [] ==
                Converter.build_query(Author, %{
+                 "op" => "contains",
+                 "path" => "oldest_post",
+                 "arg" => "1750-01-01T00:00:00.000+0200"
+               })
+               |> Predicates.Repo.all()
+
+      assert [] ==
+               Converter.build_query(Author, %{
                  "op" => "lt",
                  "path" => "oldest_post",
                  "arg" => "1750-01-01T00:00:00.000+0200"
@@ -315,6 +325,49 @@ defmodule PredicatesTest do
                })
                |> Predicates.Repo.all()
     end
+
+    test "using contains to check against array lists" do
+      Predicates.Repo.insert_all(Post, [
+        %{name: "Post 1", likes: 13, meta: %{"tags" => ["foo", "bar"]}},
+        %{name: "Post 2", likes: 42, meta: %{"tags" => ["fizz", "buzz"]}}
+      ])
+
+      # as string
+      assert %{name: "Post 1"} =
+               Converter.build_query(Post, %{
+                 "op" => "contains",
+                 "path" => "meta.tags",
+                 "arg" => "bar"
+               })
+               |> Predicates.Repo.one()
+
+      # as single element array
+      assert %{name: "Post 2"} =
+               Converter.build_query(Post, %{
+                 "op" => "contains",
+                 "path" => "meta.tags",
+                 "arg" => ["fizz"]
+               })
+               |> Predicates.Repo.one()
+
+      # as multi element array where all elements must be present
+      assert %{name: "Post 2"} =
+               Converter.build_query(Post, %{
+                 "op" => "contains",
+                 "path" => "meta.tags",
+                 "arg" => ["fizz", "buzz"]
+               })
+               |> Predicates.Repo.one()
+
+      # one array element not matching
+      assert nil ==
+               Converter.build_query(Post, %{
+                 "op" => "contains",
+                 "path" => "meta.tags",
+                 "arg" => ["fizz", "bar"]
+               })
+               |> Predicates.Repo.one()
+    end
   end
 
   test "supports shorthand true/false expressions" do
@@ -381,6 +434,41 @@ defmodule PredicatesTest do
                  "op" => "like",
                  "path" => "posts.name",
                  "arg" => "Fau"
+               })
+               |> Predicates.Repo.one()
+
+      # using contains alias
+      assert goethe ==
+               Converter.build_query(Author, %{
+                 "op" => "contains",
+                 "path" => "posts.name",
+                 "arg" => "Fau"
+               })
+               |> Predicates.Repo.one()
+    end
+  end
+
+  describe "any" do
+    test "get posts filtered of an author" do
+      {2, [goethe, schiller]} =
+        Predicates.Repo.insert_all(Author, [%{name: "Goethe"}, %{name: "Schiller"}],
+          returning: true
+        )
+
+      Predicates.Repo.insert_all(Post, [
+        %{name: "Post 1", likes: 13, author_id: schiller.id},
+        %{name: "Post 2", likes: 42, author_id: goethe.id}
+      ])
+
+      assert %{name: "Goethe"} =
+               Converter.build_query(Author, %{
+                 "op" => "any",
+                 "path" => "posts",
+                 "arg" => %{
+                   "op" => "gt",
+                   "path" => "likes",
+                   "arg" => 20
+                 }
                })
                |> Predicates.Repo.one()
     end
