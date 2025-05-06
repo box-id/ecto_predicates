@@ -4,6 +4,8 @@ Predicates are complex database queries defined as json.
 
 A predicate is a JSON Object with the required keys `op` and `arg` and for certain operations the key `path` is also required.
 
+**⚠️ This module is implemented using the ecto postgrex module**
+
 For example:
 
 ```json
@@ -166,7 +168,7 @@ Compare operation to check if (ot not) a value is part of a given list
 
 Compare operation to check if a stored value or a list of values contains a single or a list of values.
 In case of a simple stored value it'll fallback to a basic string comparator.
-If the stored value is a list the check will require to contain all given values.
+If the stored value is a json the postgres [containment operators](https://www.postgresql.org/docs/current/datatype-json.html#JSON-CONTAINMENT) are applied.
 
 **Params:**
 
@@ -191,14 +193,14 @@ To build complex query with specific "and" and "or" conditions it's possible to 
 **Params:**
 
 - **`op`** _`String` enum: `and` | `or`_: The junctor operation to process the nested predicates in `arg`
-- **`arg`** _`Predicate[]`_: The list of predicates to combine with a `and` or `or` predicate
+- **`args`** _`Predicate[]`_: The list of predicates to combine with a `and` or `or` predicate
 
 **Example:**
 
 ```json
 {
   "op": "or",
-  "arg": [
+  "args": [
     {
       "op": "eq",
       "path": "assettype_id",
