@@ -158,7 +158,7 @@ defmodule Predicates.PredicateConverter do
     do: convert_le(target, value)
 
   defp convert_comparator("contains", target, value, _queryable, _meta),
-    do: convert_like(target, value)
+    do: convert_contains(target, value)
 
   defp convert_comparator("like", target, value, _queryable, _meta),
     do: convert_like(target, value)
@@ -262,6 +262,11 @@ defmodule Predicates.PredicateConverter do
 
   defp convert_ilike({:json, field, path}, value),
     do: dynamic([q], ilike(fragment("?#>>?", field(q, ^field), ^path), ^"%#{value}%"))
+
+  defp convert_contains({:json, field, path}, value),
+    do: dynamic([q], fragment("?#>? @> ?", field(q, ^field), ^path, ^value))
+
+  defp convert_contains(type, value), do: convert_like(type, value)
 
   defp convert_starts_with({:single, field}, value),
     do: dynamic([q], like(field(q, ^field), ^"#{value}%"))
