@@ -99,11 +99,11 @@ Execute a numeric compare operation of a value against a stored value.
 
 **Params:**
 
-- **`op`** _`String` enum: `gt` | `gte` | `lt` | `lte`_: The operation for the numeric compare
+- **`op`** _`String` enum: `gt` | `ge` | `lt` | `le`_: The operation for the numeric compare
   - _`gt`_: Greater than
-  - _`gte`_: Greater or equal than
+  - _`ge`_: Greater or equal than
   - _`lt`_: Lower than
-  - _`lte`_: Lower or equal than
+  - _`le`_: Lower or equal than
 - **`path`** _`String`_: The field name or the path to the key. This can be a path inside a json field or the path through connected/related tables
 - **`arg`** _`Number`_: The value to process the operation against the stored value
 
@@ -111,7 +111,7 @@ Execute a numeric compare operation of a value against a stored value.
 
 ```json
 {
-  "op": "gte",
+  "op": "ge",
   "path": "currstate.temp.val",
   "arg": 23
 }
