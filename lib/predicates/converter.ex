@@ -45,7 +45,7 @@ defmodule Predicates.PredicateConverter do
   import Predicates.SchemaHelpers
 
   alias Predicates.PredicateError
-  alias Utils
+  alias Predicates.Utils
 
   # create a ecto query from the given predicates
   @spec build_query(queryable :: Ecto.Queryable.t(), predicate :: Map.t(), query :: Map.t()) ::
