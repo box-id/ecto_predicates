@@ -1,4 +1,4 @@
-defmodule Utils do
+defmodule Predicates.Utils do
   @doc """
   Tries to call a function (given as a function ref or `{Module, :name}` tuple) with as many arguments from `args` as
   possible, retrying with fewer arguments if the function call fails.
