@@ -116,11 +116,19 @@ defmodule PredicatesTest do
   setup :create_tables
 
   describe "operators" do
-    test "queries by string equals on string field" do
+    test "queries by string equals/not-equals on string field" do
       Predicates.Repo.insert_all(Author, [%{name: "Goethe"}, %{name: "Schiller"}])
 
       assert %{name: "Goethe"} =
                Converter.build_query(Author, %{"op" => "eq", "path" => "name", "arg" => "Goethe"})
+               |> Predicates.Repo.one()
+
+      assert %{name: "Schiller"} =
+               Converter.build_query(Author, %{
+                 "op" => "not_eq",
+                 "path" => "name",
+                 "arg" => "Goethe"
+               })
                |> Predicates.Repo.one()
     end
 
@@ -287,6 +295,43 @@ defmodule PredicatesTest do
         &assert_maps_equal(&1, &2, [:name])
       )
 
+      assert [%{name: "Goethe"}] =
+               Converter.build_query(Author, %{
+                 "op" => "not_eq",
+                 "path" => "meta.wealthy",
+                 "arg" => nil
+               })
+               |> Predicates.Repo.all()
+
+      # assert_lists_equal(
+      #   [%{name: "Schiller"}, %{name: "Mann"}],
+      #   Converter.build_query(Author, %{
+      #     "op" => "not_eq",
+      #     "path" => "meta.wealthy",
+      #     "arg" => true
+      #   })
+      #   |> Predicates.Repo.all()
+      #   |> IO.inspect(label: "RESULT"),
+      #   &assert_maps_equal(&1, &2, [:name])
+      # )
+      Converter.build_query(
+        Author,
+        %{
+          "op" => "not",
+          "arg" => %{
+            "op" => "eq",
+            "path" => "meta.wealthy",
+            "arg" => nil
+          }
+        }
+      )
+      |> Predicates.Repo.all()
+      |> IO.inspect(label: "RESULT")
+
+      # NOTE: Should it behave like this? AKA should not_eq mimic the behavior
+      # of not (eq ...)? Or should it actually include everything that's not
+      # nil?
+
       # Nil checks are special-cased on `eq` operator and not supported on other operators, which is why Schiller and
       # Mann are missing from the following results.
       assert [%{name: "Goethe"}] =
@@ -365,6 +410,33 @@ defmodule PredicatesTest do
                  "op" => "contains",
                  "path" => "meta.tags",
                  "arg" => ["fizz", "bar"]
+               })
+               |> Predicates.Repo.one()
+    end
+
+    test "starts_with and ends_with operators" do
+      Predicates.Repo.insert_all(Author, [
+        %{name: "Goethe"},
+        %{name: "Schiller"},
+        %{name: "Schmidt"}
+      ])
+
+      assert_lists_equal(
+        [%{name: "Schiller"}, %{name: "Schmidt"}],
+        Converter.build_query(Author, %{
+          "op" => "starts_with",
+          "path" => "name",
+          "arg" => "Sch"
+        })
+        |> Predicates.Repo.all(),
+        &assert_maps_equal(&1, &2, [:name])
+      )
+
+      assert %{name: "Goethe"} =
+               Converter.build_query(Author, %{
+                 "op" => "ends_with",
+                 "path" => "name",
+                 "arg" => "the"
                })
                |> Predicates.Repo.one()
     end

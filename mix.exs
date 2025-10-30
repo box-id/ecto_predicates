@@ -12,6 +12,10 @@ defmodule PredicateToSQL.MixProject do
     ]
   end
 
+  def cli do
+    [preferred_envs: ["test.watch": :test]]
+  end
+
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
@@ -21,7 +25,8 @@ defmodule PredicateToSQL.MixProject do
       {:ok, "~> 2.3.0"},
       {:postgrex, "~> 0.15"},
       {:jason, "~> 1.2"},
-      {:ecto_enum, "~> 1.4"}
+      {:ecto_enum, "~> 1.4"},
+      {:mix_test_watch, "~> 1.0", only: [:dev, :test], runtime: false}
     ]
   end
 

@@ -23,7 +23,7 @@ defmodule Predicates.PredicateConverter do
 
   Comparator Predicate:
   %{
-    op: :eq | :gt | :ge | :lt | :le | :contains | :like | :ilike | :in | :not_in | :starts_with
+    op: :eq | :not_eq | :gt | :ge | :lt | :le | :contains | :like | :ilike | :in | :not_in | :starts_with | :ends_with
 
     path: binary() | [binary() | atom()],
     arg: any()
@@ -41,6 +41,12 @@ defmodule Predicates.PredicateConverter do
   - A virtual field *if* the schema module implements either `virtual_field(name)` or `virtual_field(name, query)` that
     returns a `dynamic` query resolving to the virtual field's value.
   """
+
+  # TODO: Predicates
+  # - add `not_eq` (incl. nil handling)
+  # - nil handling for `in`
+  # - nil handling for `not_in`
+
   import Ecto.Query
   import Predicates.SchemaHelpers
 
@@ -145,6 +151,9 @@ defmodule Predicates.PredicateConverter do
   defp convert_comparator("eq", target, value, _queryable, _meta),
     do: convert_eq(target, value)
 
+  defp convert_comparator("not_eq", target, value, _queryable, _meta),
+    do: convert_not_eq(target, value)
+
   defp convert_comparator("gt", target, value, _queryable, _meta),
     do: convert_gt(target, value)
 
@@ -168,6 +177,9 @@ defmodule Predicates.PredicateConverter do
 
   defp convert_comparator("starts_with", target, value, _queryable, _meta),
     do: convert_starts_with(target, value)
+
+  defp convert_comparator("ends_with", target, value, _queryable, _meta),
+    do: convert_ends_with(target, value)
 
   defp convert_comparator("in", target, value, _queryable, _meta),
     do: convert_in(target, value)
@@ -210,6 +222,26 @@ defmodule Predicates.PredicateConverter do
         [q],
         fragment("?#>>?", field(q, ^field), ^path) == ^value
       )
+
+  defp convert_not_eq({:single, field}, nil),
+    do: dynamic([q], not is_nil(field(q, ^field)))
+
+  defp convert_not_eq({:virtual, field, _}, nil),
+    do: dynamic([q], not is_nil(^field))
+
+  defp convert_not_eq({:json, field, path}, nil),
+    do: dynamic([q], not is_nil(fragment("?#>>?", field(q, ^field), ^path)))
+
+  defp convert_not_eq({:json, field, path}, value) when is_boolean(value) or is_number(value),
+    do: dynamic([q], fragment("?#>?", field(q, ^field), ^path) != ^value)
+
+  defp convert_not_eq({:single, field}, value), do: dynamic([q], field(q, ^field) != ^value)
+
+  defp convert_not_eq({:virtual, field, type}, value),
+    do: dynamic(^field != ^maybe_cast(value, type))
+
+  defp convert_not_eq({:json, field, path}, value),
+    do: dynamic([q], fragment("?#>>?", field(q, ^field), ^path) != ^value)
 
   defp convert_gt({:single, field}, value), do: dynamic([q], field(q, ^field) > ^value)
 
@@ -276,6 +308,15 @@ defmodule Predicates.PredicateConverter do
 
   defp convert_starts_with({:json, field, path}, value),
     do: dynamic([q], like(fragment("?#>>?", field(q, ^field), ^path), ^"#{value}%"))
+
+  defp convert_ends_with({:single, field}, value),
+    do: dynamic([q], like(field(q, ^field), ^"%#{value}"))
+
+  defp convert_ends_with({:virtual, field, _type}, value),
+    do: dynamic([q], like(type(^field, :string), ^"%#{value}"))
+
+  defp convert_ends_with({:json, field, path}, value),
+    do: dynamic([q], like(fragment("?#>>?", field(q, ^field), ^path), ^"%#{value}"))
 
   defp convert_in({:single, field}, value),
     do: dynamic([q], field(q, ^field) in ^value)
