@@ -43,7 +43,6 @@ defmodule Predicates.PredicateConverter do
   """
 
   # TODO: Predicates
-  # - add `not_eq` (incl. nil handling)
   # - nil handling for `in`
   # - nil handling for `not_in`
 
@@ -233,15 +232,26 @@ defmodule Predicates.PredicateConverter do
     do: dynamic([q], not is_nil(fragment("?#>>?", field(q, ^field), ^path)))
 
   defp convert_not_eq({:json, field, path}, value) when is_boolean(value) or is_number(value),
-    do: dynamic([q], fragment("?#>?", field(q, ^field), ^path) != ^value)
-
-  defp convert_not_eq({:single, field}, value), do: dynamic([q], field(q, ^field) != ^value)
-
-  defp convert_not_eq({:virtual, field, type}, value),
-    do: dynamic(^field != ^maybe_cast(value, type))
+    do:
+      dynamic(
+        [q],
+        fragment("?#>?", field(q, ^field), ^path) != ^value or
+          is_nil(fragment("?#>?", field(q, ^field), ^path))
+      )
 
   defp convert_not_eq({:json, field, path}, value),
-    do: dynamic([q], fragment("?#>>?", field(q, ^field), ^path) != ^value)
+    do:
+      dynamic(
+        [q],
+        fragment("?#>>?", field(q, ^field), ^path) != ^value or
+          is_nil(fragment("?#>>?", field(q, ^field), ^path))
+      )
+
+  defp convert_not_eq({:single, field}, value),
+    do: dynamic([q], field(q, ^field) != ^value or is_nil(field(q, ^field)))
+
+  defp convert_not_eq({:virtual, field, type}, value),
+    do: dynamic(^field != ^maybe_cast(value, type) or is_nil(^field))
 
   defp convert_gt({:single, field}, value), do: dynamic([q], field(q, ^field) > ^value)
 
