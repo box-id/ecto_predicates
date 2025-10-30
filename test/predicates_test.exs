@@ -269,7 +269,7 @@ defmodule PredicatesTest do
                |> Predicates.Repo.all()
     end
 
-    test "handling of null values in json fields" do
+    test "handling of null values in json fields and eq/not_eq operators" do
       Predicates.Repo.insert_all(Author, [
         %{name: "Goethe", meta: %{"wealthy" => true}},
         %{name: "Mann", meta: %{"wealthy" => nil}},
@@ -326,19 +326,42 @@ defmodule PredicatesTest do
                          })
                          |> Predicates.Repo.all(),
                          &assert_maps_equal(&1, &2, [:name])
+    end
 
-      # Nil checks are special-cased on `eq` operator and not supported on other operators, which is why Schiller and
-      # Mann are missing from the following results.
+    test "handling of null values in json fields and in/not_in operators" do
+      Predicates.Repo.insert_all(Author, [
+        %{name: "Goethe", meta: %{"wealthy" => true}},
+        %{name: "Mann", meta: %{"wealthy" => nil}},
+        %{name: "Schiller", meta: %{}}
+      ])
+
       assert [%{name: "Goethe"}] =
                Converter.build_query(Author, %{
                  "op" => "in",
                  "path" => "meta.wealthy",
-                 "arg" => [true, nil]
+                 "arg" => [true]
                })
                |> Predicates.Repo.all()
 
-      # Interesting enough, `not_in` is not the inverse of `in` if null values are involved:
-      assert [] =
+      assert_lists_equal [%{name: "Schiller"}, %{name: "Mann"}, %{name: "Goethe"}],
+                         Converter.build_query(Author, %{
+                           "op" => "in",
+                           "path" => "meta.wealthy",
+                           "arg" => [true, nil]
+                         })
+                         |> Predicates.Repo.all(),
+                         &assert_maps_equal(&1, &2, [:name])
+
+      assert_lists_equal [%{name: "Mann"}, %{name: "Schiller"}],
+                         Converter.build_query(Author, %{
+                           "op" => "not_in",
+                           "path" => "meta.wealthy",
+                           "arg" => [true]
+                         })
+                         |> Predicates.Repo.all(),
+                         &assert_maps_equal(&1, &2, [:name])
+
+      assert [] ==
                Converter.build_query(Author, %{
                  "op" => "not_in",
                  "path" => "meta.wealthy",

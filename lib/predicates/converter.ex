@@ -52,6 +52,13 @@ defmodule Predicates.PredicateConverter do
   alias Predicates.PredicateError
   alias Predicates.Utils
 
+  # Combines is_nil and "is JSON null" checks
+  defmacrop is_nullish(field) do
+    quote do
+      is_nil(unquote(field)) or unquote(field) == fragment("'null'::jsonb")
+    end
+  end
+
   # create a ecto query from the given predicates
   @spec build_query(queryable :: Ecto.Queryable.t(), predicate :: Map.t(), query :: Map.t()) ::
           Ecto.Query.t()
@@ -236,7 +243,7 @@ defmodule Predicates.PredicateConverter do
       dynamic(
         [q],
         fragment("?#>?", field(q, ^field), ^path) != ^value or
-          is_nil(fragment("?#>?", field(q, ^field), ^path))
+          is_nil(fragment("?#>>?", field(q, ^field), ^path))
       )
 
   defp convert_not_eq({:json, field, path}, value),
@@ -328,22 +335,44 @@ defmodule Predicates.PredicateConverter do
   defp convert_ends_with({:json, field, path}, value),
     do: dynamic([q], like(fragment("?#>>?", field(q, ^field), ^path), ^"%#{value}"))
 
-  defp convert_in({:single, field}, value),
-    do: dynamic([q], field(q, ^field) in ^value)
+  defp convert_in(field, value) when not is_list(value), do: convert_in(field, List.wrap(value))
 
+  # FIXME: Handle nils
+  defp convert_in({:single, field}, value), do: dynamic([q], field(q, ^field) in ^value)
+
+  # FIXME: Handle nils
   defp convert_in({:virtual, field, type}, value),
     do: dynamic([q], ^field in ^maybe_cast_array(value, type))
 
-  defp convert_in({:json, field, path}, value),
-    do: dynamic([q], fragment("?#>? = ANY(?)", field(q, ^field), ^path, ^value))
+  defp convert_in({:json, field, path}, value) do
+    # `nil` values will never match with `IN` operator, so we need to handle them separately.
+    {values, nil_values} = Enum.split_with(value, &(!is_nil(&1)))
 
+    db_field = dynamic([q], fragment("?#>?", field(q, ^field), ^path))
+    query = dynamic(^db_field in ^values)
+
+    if nil_values == [],
+      do: query,
+      else: dynamic([q], ^query or is_nullish(^db_field))
+  end
+
+  # FIXME: Handle nils
   defp convert_not_in({:single, field}, value), do: dynamic([q], field(q, ^field) not in ^value)
 
+  # FIXME: Handle nils
   defp convert_not_in({:virtual, field, type}, value),
     do: dynamic([q], ^field not in ^maybe_cast_array(value, type))
 
-  defp convert_not_in({:json, field, path}, value),
-    do: dynamic([q], not fragment("?#>? = ANY(?)", field(q, ^field), ^path, ^value))
+  defp convert_not_in({:json, field, path}, value) do
+    {values, nil_values} = Enum.split_with(value, &(!is_nil(&1)))
+
+    db_field = dynamic([q], fragment("?#>?", field(q, ^field), ^path))
+    query = dynamic([q], ^db_field not in ^values)
+
+    if nil_values == [],
+      do: dynamic(^query or is_nullish(^db_field)),
+      else: dynamic(^query and not is_nullish(^db_field))
+  end
 
   defp convert_any({:assoc, field}, sub_predicate, queryable, meta) do
     schema = get_schema(queryable)
