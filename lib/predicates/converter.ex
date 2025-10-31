@@ -313,6 +313,7 @@ defmodule Predicates.PredicateConverter do
     do: dynamic([q], ilike(fragment("?#>>?", field(q, ^field), ^path), ^"%#{value}%"))
 
   defp convert_contains({:json, field, path}, value),
+    # jsonb containment operator, see https://www.postgresql.org/docs/17/datatype-json.html#JSON-CONTAINMENT
     do: dynamic([q], fragment("?#>? @> ?", field(q, ^field), ^path, ^value))
 
   defp convert_contains(type, value), do: convert_like(type, value)
@@ -337,12 +338,28 @@ defmodule Predicates.PredicateConverter do
 
   defp convert_in(field, value) when not is_list(value), do: convert_in(field, List.wrap(value))
 
-  # FIXME: Handle nils
-  defp convert_in({:single, field}, value), do: dynamic([q], field(q, ^field) in ^value)
+  defp convert_in({:single, field}, value) do
+    # `nil` values will never match with `IN` operator, so we need to handle them separately.
+    {values, nil_values} = Enum.split_with(value, &(!is_nil(&1)))
 
-  # FIXME: Handle nils
-  defp convert_in({:virtual, field, type}, value),
-    do: dynamic([q], ^field in ^maybe_cast_array(value, type))
+    db_field = dynamic([q], field(q, ^field))
+    query = dynamic(^db_field in ^values)
+
+    if nil_values == [],
+      do: query,
+      else: dynamic(^query or is_nil(^db_field))
+  end
+
+  defp convert_in({:virtual, field, type}, value) do
+    # `nil` values will never match with `IN` operator, so we need to handle them separately.
+    {values, nil_values} = Enum.split_with(value, &(!is_nil(&1)))
+
+    query = dynamic([q], ^field in ^maybe_cast_array(values, type))
+
+    if nil_values == [],
+      do: query,
+      else: dynamic(^query or is_nil(^field))
+  end
 
   defp convert_in({:json, field, path}, value) do
     # `nil` values will never match with `IN` operator, so we need to handle them separately.
@@ -353,21 +370,38 @@ defmodule Predicates.PredicateConverter do
 
     if nil_values == [],
       do: query,
-      else: dynamic([q], ^query or is_nullish(^db_field))
+      else: dynamic(^query or is_nullish(^db_field))
   end
 
-  # FIXME: Handle nils
-  defp convert_not_in({:single, field}, value), do: dynamic([q], field(q, ^field) not in ^value)
+  defp convert_not_in({:single, field}, value) do
+    # `nil` values will never match with `NOT IN` operator, so we need to handle them separately.
+    {values, nil_values} = Enum.split_with(value, &(!is_nil(&1)))
 
-  # FIXME: Handle nils
-  defp convert_not_in({:virtual, field, type}, value),
-    do: dynamic([q], ^field not in ^maybe_cast_array(value, type))
+    db_field = dynamic([q], field(q, ^field))
+    query = dynamic(^db_field not in ^values)
+
+    if nil_values == [],
+      do: dynamic(^query or is_nil(^db_field)),
+      else: dynamic(^query and not is_nil(^db_field))
+  end
+
+  defp convert_not_in({:virtual, field, type}, value) do
+    # `nil` values will never match with `NOT IN` operator, so we need to handle them separately.
+    {values, nil_values} = Enum.split_with(value, &(!is_nil(&1)))
+
+    query = dynamic(^field not in ^maybe_cast_array(values, type))
+
+    if nil_values == [],
+      do: dynamic(^query or is_nil(^field)),
+      else: dynamic(^query and not is_nil(^field))
+  end
 
   defp convert_not_in({:json, field, path}, value) do
+    # `nil` values will never match with `NOT IN` operator, so we need to handle them separately.
     {values, nil_values} = Enum.split_with(value, &(!is_nil(&1)))
 
     db_field = dynamic([q], fragment("?#>?", field(q, ^field), ^path))
-    query = dynamic([q], ^db_field not in ^values)
+    query = dynamic(^db_field not in ^values)
 
     if nil_values == [],
       do: dynamic(^query or is_nullish(^db_field)),
@@ -397,10 +431,7 @@ defmodule Predicates.PredicateConverter do
         )
         |> build_sub_query(sub_predicate, meta)
 
-      dynamic(
-        [q],
-        exists(subquery)
-      )
+      dynamic(exists(subquery))
     end
   end
 
