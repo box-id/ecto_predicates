@@ -25,5 +25,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `contains` operator for string values: Use `like` instead, as `contains` will only be applicable to collections in the
   future.
 
+## [0.4.0] - 2025-09-25
+
+### Breaking Changes
+
+- Renamed `Utils` module to `Predicates.Utils` to avoid module name collision
+
 [unreleased]: https://github.com/box-id/ecto_predicates/compare/0.5.0...HEAD
 [0.5.0]: https://github.com/box-id/ecto_predicates/compare/0.4.0...0.5.0
+[0.4.0]: https://github.com/box-id/ecto_predicates/compare/0.3.0...0.4.0
