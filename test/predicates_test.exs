@@ -696,5 +696,34 @@ defmodule PredicatesTest do
     end
   end
 
+  describe "pattern escaping" do
+    for op <- ["like", "ilike", "starts_with", "ends_with"] do
+      test "uses escaped patterns for #{op} operator" do
+        Predicates.Repo.insert_all(Author, [
+          %{name: "Goethe"},
+          %{name: "Schiller"},
+          %{name: "Sch%ller"},
+          %{name: "Sch_ller"}
+        ])
+
+        assert [%{name: "Sch%ller"}] =
+                 Converter.build_query(Author, %{
+                   "op" => unquote(op),
+                   "path" => "name",
+                   "arg" => "Sch%ller"
+                 })
+                 |> Predicates.Repo.all()
+
+        assert [%{name: "Sch_ller"}] =
+                 Converter.build_query(Author, %{
+                   "op" => unquote(op),
+                   "path" => "name",
+                   "arg" => "Sch_ller"
+                 })
+                 |> Predicates.Repo.all()
+      end
+    end
+  end
+
   # TODO: Test client_id filter for association subqueries
 end

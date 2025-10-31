@@ -48,9 +48,9 @@ defmodule Predicates.PredicateConverter do
 
   import Ecto.Query
   import Predicates.SchemaHelpers
+  import Predicates.Utils
 
   alias Predicates.PredicateError
-  alias Predicates.Utils
 
   # Combines is_nil and "is JSON null" checks
   defmacrop is_nullish(field) do
@@ -295,22 +295,30 @@ defmodule Predicates.PredicateConverter do
     do: dynamic([q], fragment("?#>? <= ?", field(q, ^field), ^path, ^value))
 
   defp convert_like({:single, field}, value),
-    do: dynamic([q], like(field(q, ^field), ^"%#{value}%"))
+    do: dynamic([q], like(field(q, ^field), ^"%#{search_to_like_pattern(value)}%"))
 
   defp convert_like({:virtual, field, _type}, value),
-    do: dynamic([q], like(type(^field, :string), ^"%#{value}%"))
+    do: dynamic([q], like(type(^field, :string), ^"%#{search_to_like_pattern(value)}%"))
 
   defp convert_like({:json, field, path}, value),
-    do: dynamic([q], like(fragment("?#>>?", field(q, ^field), ^path), ^"%#{value}%"))
+    do:
+      dynamic(
+        [q],
+        like(fragment("?#>>?", field(q, ^field), ^path), ^"%#{search_to_like_pattern(value)}%")
+      )
 
   defp convert_ilike({:single, field}, value),
-    do: dynamic([q], ilike(field(q, ^field), ^"%#{value}%"))
+    do: dynamic([q], ilike(field(q, ^field), ^"%#{search_to_like_pattern(value)}%"))
 
   defp convert_ilike({:virtual, field, _type}, value),
-    do: dynamic(ilike(type(^field, :string), ^"%#{value}%"))
+    do: dynamic(ilike(type(^field, :string), ^"%#{search_to_like_pattern(value)}%"))
 
   defp convert_ilike({:json, field, path}, value),
-    do: dynamic([q], ilike(fragment("?#>>?", field(q, ^field), ^path), ^"%#{value}%"))
+    do:
+      dynamic(
+        [q],
+        ilike(fragment("?#>>?", field(q, ^field), ^path), ^"%#{search_to_like_pattern(value)}%")
+      )
 
   defp convert_contains({:json, field, path}, value),
     # jsonb containment operator, see https://www.postgresql.org/docs/17/datatype-json.html#JSON-CONTAINMENT
@@ -319,22 +327,30 @@ defmodule Predicates.PredicateConverter do
   defp convert_contains(type, value), do: convert_like(type, value)
 
   defp convert_starts_with({:single, field}, value),
-    do: dynamic([q], like(field(q, ^field), ^"#{value}%"))
+    do: dynamic([q], like(field(q, ^field), ^"#{search_to_like_pattern(value)}%"))
 
   defp convert_starts_with({:virtual, field, _type}, value),
-    do: dynamic([q], like(type(^field, :string), ^"#{value}%"))
+    do: dynamic([q], like(type(^field, :string), ^"#{search_to_like_pattern(value)}%"))
 
   defp convert_starts_with({:json, field, path}, value),
-    do: dynamic([q], like(fragment("?#>>?", field(q, ^field), ^path), ^"#{value}%"))
+    do:
+      dynamic(
+        [q],
+        like(fragment("?#>>?", field(q, ^field), ^path), ^"#{search_to_like_pattern(value)}%")
+      )
 
   defp convert_ends_with({:single, field}, value),
-    do: dynamic([q], like(field(q, ^field), ^"%#{value}"))
+    do: dynamic([q], like(field(q, ^field), ^"%#{search_to_like_pattern(value)}"))
 
   defp convert_ends_with({:virtual, field, _type}, value),
-    do: dynamic([q], like(type(^field, :string), ^"%#{value}"))
+    do: dynamic([q], like(type(^field, :string), ^"%#{search_to_like_pattern(value)}"))
 
   defp convert_ends_with({:json, field, path}, value),
-    do: dynamic([q], like(fragment("?#>>?", field(q, ^field), ^path), ^"%#{value}"))
+    do:
+      dynamic(
+        [q],
+        like(fragment("?#>>?", field(q, ^field), ^path), ^"%#{search_to_like_pattern(value)}")
+      )
 
   defp convert_in(field, value) when not is_list(value), do: convert_in(field, List.wrap(value))
 
@@ -500,7 +516,7 @@ defmodule Predicates.PredicateConverter do
           # computed/virtual field (might not be supported by the schema)
           virtual_field =
             try do
-              Utils.safe_call({schema, :get_virtual_field}, [atom_field, meta], 1)
+              safe_call({schema, :get_virtual_field}, [atom_field, meta], 1)
             rescue
               [FunctionClauseError, UndefinedFunctionError] ->
                 # credo:disable-for-next-line Credo.Check.Warning.RaiseInsideRescue

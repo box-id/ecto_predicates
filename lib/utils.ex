@@ -39,4 +39,11 @@ defmodule Predicates.Utils do
         reraise error, __STACKTRACE__
       end
   end
+
+  @doc """
+  Escapes a user-provided search string to be used in a LIKE/ILIKE pattern.
+  """
+  def search_to_like_pattern(search) when is_binary(search) do
+    String.replace(search, ~r/([%_])/, "\\\\\\1")
+  end
 end
