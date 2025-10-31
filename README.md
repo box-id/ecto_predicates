@@ -94,7 +94,7 @@ Combine predicates using `and`/`or`, use different operators and walk associatio
 
 ### Generic Comparators: `eq` & `not_eq`
 
-Evaluates to true if the stored value exactly matches/doesn't match the provided argument. These operators are null-safe (see below).
+Evaluates to true if the stored value exactly matches/doesn't match the provided argument. These operators are null-safe, see [Null Values](#null-values).
 
 #### Params
 
@@ -114,7 +114,7 @@ Evaluates to true if the stored value exactly matches/doesn't match the provided
 
 ### Numeric Comparators: `gt`, `ge`, `lt` & `le`
 
-Evaluates to true if the stored value is greater than (`gt`)/greater than or equal (`ge`)/less than (`lt`)/less than or equal (`le`) the provided argument. These operators are **not** null-safe (see below).
+Evaluates to true if the stored value is greater than (`gt`)/greater than or equal (`ge`)/less than (`lt`)/less than or equal (`le`) the provided argument. These operators are **not** null-safe, see [Null Values](#null-values).
 
 The comparator uses the database's comparators `<`, `<=`, `>` & `>=`.
 
@@ -138,7 +138,7 @@ If `path` points to a model field with of either `:utc_datetime` or `:utc_dateti
 
 ### String Comparators: `like`, `ilike`, `starts_with` & `ends_with`
 
-Evaluates to true if the stored string contains (`like`)/contains ignoring casing (`ilike`)/starts with (`starts_with`)/ends with `ends_with` the provided argument. These operators are **not** null-safe (see below).
+Evaluates to true if the stored string contains (`like`)/contains ignoring casing (`ilike`)/starts with (`starts_with`)/ends with `ends_with` the provided argument. These operators are **not** null-safe, see [Null Values](#null-values).
 
 #### Params
 
@@ -158,7 +158,7 @@ Evaluates to true if the stored string contains (`like`)/contains ignoring casin
 
 ### List Comparators: `in` & `not_in`
 
-Evaluates to true if the stored value is included in (`in`)/is not included in (`not_in`) the list of provided arguments. These operators are null-safe (see below.)
+Evaluates to true if the stored value is included in (`in`)/is not included in (`not_in`) the list of provided arguments. These operators are null-safe, see [Null Values](#null-values).
 
 #### Params
 
@@ -237,12 +237,12 @@ When given an empty list for `args`, `and` evaluates to true, while `or` evaluat
 ### Negation Operator: `not`
 
 Evaluates to true when the sub-predicate is false.
-For operators that define an inverse operation (e.g. `eq` & `not_eq`, `in` & `not_in`), prefer using those to avoid unexpected results if null values are involved (see [Null Values](#null-values-1)).
+For operators that define an inverse operation (e.g. `eq` & `not_eq`, `in` & `not_in`), prefer using those to avoid unexpected results if null values are involved, see [Null Values](#null-values).
 
 #### Params
 
 - **`op`**: `not`
-- **`arg`** _`Predicate`_: A sub predicate to invert
+- **`arg`** _`Predicate`_: A sub-predicate to invert
 
 #### Example
 
@@ -260,14 +260,15 @@ For operators that define an inverse operation (e.g. `eq` & `not_eq`, `in` & `no
 ### Quantor Operator: `any`
 
 Evaluates to true if the sub-predicate is true for any of the associated entities.
-The `any` operator is also implicitly introduced when walking a 1-to-many association using `.`-path notation.
+The `any` operator is also implicitly introduced when walking a 1-to-many association using `.`-path notation, see [Path Resolution](#path-resolution).
 
 The sub-predicate is evaluated within the scope of the target entity, meaning that a path of `""` targets the relationship destination itself, and `"id"` targets the `id` column of the related entity.
 
 #### Params
 
+- **`op`**: `any`
 - **`path`** _`String`_: The field name holding the associated data
-- **`arg`** _`Predicate`_: A sub predicate to process against the associated data
+- **`arg`** _`Predicate`_: A sub-predicate to process against the associated data
 
 #### Example
 
@@ -283,13 +284,13 @@ The sub-predicate is evaluated within the scope of the target entity, meaning th
 }
 ```
 
-## <a id="null-values-1"></a> Null Values
+## <a id="null-values"></a> Null Values
 
-In SQL, handling NULL values can lead to unexpected situations, as the result of comparisons with NULL are always NULL and thus falsy. E.g., a simple _equals_ check `field = 'foo'` is false if `field` is NULL, but `field != 'foo'` is also false.
+In SQL, handling NULL values can lead to unexpected situations, as the result of comparisons with NULL are always NULL and thus falsy. For example, a simple _equals_ check `field = 'foo'` is false if `field` is NULL, but `field != 'foo'` is also false.
 
-This library tried to handle this circumstance by adding the appropriate comparisons to the underlying query. This is particularly relevant to `not_eq` and `not_in`, which would incorrectly omit results if not taken care of.
+This library tries handling this circumstance by adding the appropriate comparisons to the underlying query, and is particularly relevant to `not_eq` and `not_in` (which would incorrectly omit results if not taken care of).
 
-However, this special handling is not applied when negating `eq` or `in` through `not`. I.e, the following two predicates are not the same (if NULL values are involved), because `not_eq` does include record with `type_id IS NULL`, while `not + eq` doesn't.
+However, this special handling is not applied when negating `eq` or `in` through `not`. For example, the following two predicates are not the same (if NULL values are involved), because `not_eq` does include record with `type_id IS NULL`, while `not` with `eq` doesn't.
 
 ```json
 {
@@ -310,7 +311,7 @@ However, this special handling is not applied when negating `eq` or `in` through
 
 If operators are not stated as being _null-safe_, then there is no special treatment of NULL values for those operators.
 
-## Path Resolution
+## <a id="path-resolution"></a> Path Resolution
 
 ## Virtual Fields
 
@@ -321,7 +322,22 @@ If operators are not stated as being _null-safe_, then there is no special treat
 ### Compatibility
 
 This library was implemented targeting PostgreSQL and uses JSON path or array containment operators that might be
-incompatible with other databases. Feel free to open a PR with extended support.
+incompatible with other databases. Please feel free to contribute!
+
+### Accidental Exposure of Information
+
+When accepting untrusted query predicates, third parties might be able to access information on the model itself or
+associated records that would otherwise not be exposed to them.
+
+For example, users could guess the value of an otherwise hidden field by systematically issuing queries such as:
+
+```json
+{
+  "op": "gt",
+  "path": "hidden_grade",
+  "arg": 3.5
+}
+```
 
 ## Installation
 
