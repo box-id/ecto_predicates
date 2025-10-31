@@ -1,45 +1,6 @@
 defmodule Predicates.PredicateConverter do
   @moduledoc """
-  This module is capable to convert a predicate map into an ecto query based on the defined schemas.
-
-  Junctor Predicate:
-  %{
-    op: :and | :or,
-    args: Predicate.t()
-  }
-
-  Negation Predicate:
-  %{
-    op: :not,
-    arg: Predicate.t()
-  }
-
-  Quantor Predicate:
-  %{
-    op: :all | :any,
-    path: binary() | [binary() | atom()],
-    arg: Predicate.t()
-  }
-
-  Comparator Predicate:
-  %{
-    op: :eq | :not_eq | :gt | :ge | :lt | :le | :contains | :like | :ilike | :in | :not_in | :starts_with | :ends_with
-
-    path: binary() | [binary() | atom()],
-    arg: any()
-  }
-
-  Value Predicate:
-  %{
-    arg: boolean
-  }
-
-  The `path` can be:
-
-  - An actual field name on the model schema
-  - An association name on the model schema
-  - A virtual field *if* the schema module implements either `virtual_field(name)` or `virtual_field(name, query)` that
-    returns a `dynamic` query resolving to the virtual field's value.
+  Convert a predicate map into an Ecto query.
   """
 
   import Ecto.Query
