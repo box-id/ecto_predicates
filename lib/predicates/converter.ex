@@ -17,7 +17,7 @@ defmodule Predicates.PredicateConverter do
   end
 
   # create a ecto query from the given predicates
-  @spec build_query(queryable :: Ecto.Queryable.t(), predicate :: Map.t(), query :: Map.t()) ::
+  @spec build_query(queryable :: Ecto.Queryable.t(), predicate :: map(), query :: map()) ::
           Ecto.Query.t()
   def build_query(queryable, predicate, query \\ %{})
 
@@ -36,7 +36,7 @@ defmodule Predicates.PredicateConverter do
   end
 
   # create dynamic ecto queries fragments from the given predicates.
-  @spec convert_query(queryable :: Ecto.Queryable.t(), predicate :: Map.t(), query :: Map.t()) ::
+  @spec convert_query(queryable :: Ecto.Queryable.t(), predicate :: map(), query :: map()) ::
           Macro.t()
   def convert_query(queryable, predicate, query \\ %{})
 
