@@ -75,7 +75,6 @@ defmodule PredicatesTest do
     def get_virtual_field(:post_count, %{"publisher_id" => publisher_id}),
       do:
         dynamic(
-          [author],
           subquery(
             from(p in Post,
               where:
@@ -88,7 +87,6 @@ defmodule PredicatesTest do
     def get_virtual_field(:oldest_post),
       do:
         dynamic(
-          [author],
           subquery(
             from(p in Post,
               where: p.author_id == parent_as(:pred_authors).id,
