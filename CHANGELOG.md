@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Handle null values for `in` and `not_in` operators to be aligned with `eq`.
 - `like`, `ilike`, `starts_with` operators now escape `arg` s.t. `%` and `_` characters are not interpreted as
   placeholders anymore.
+- Field names are now converted to atoms using `String.to_existing_atom/1`, failing for unknown field names.
 
 ### Added
 
