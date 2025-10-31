@@ -1,67 +1,60 @@
 # Ecto Predicates
 
-Predicates are complex database queries defined as json.
+`Predicates.PredicateConverter` converts rich JSON-based predicates into ecto queries. It is aware of an ecto model's
+fields and associations to achieve powerful querying capabilities in a data-driven manner.
 
-A predicate is a JSON Object with the required keys `op` and `arg` and for certain operations the key `path` is also required.
+The usecase of this library is to give clients a lot of power to define the expected set of results from an operation.
 
-**⚠️ This module is implemented using the ecto postgrex module**
+## Introduction
 
-For example:
+Predicates are JSON objects of a specific shape. Every predicate requires the keys `op` and `arg`/`args` and
+many operations also require a `path` to work on. They express an assertion about objects in a database.
 
-```json
-{
-  "op": "eq",
-  "path": "assettype_id",
-  "arg": "062e602a-3c38-46a3-b463-237e3767a5aa"
+For example, the following predicate constrains a query to `Model` objects with `type_id` equal to
+`062e602a-3c38-46a3-b463-237e3767a5aa`.
+
+```elixir
+predicate = %{
+  "op" => "eq",
+  "path" => "type_id",
+  "arg" => "062e602a-3c38-46a3-b463-237e3767a5aa"
 }
+
+from(Model, as: models)
+|> PredicateConverter.convert(predicate)
+|> Repo.all()
 ```
 
-**Complex Example:**
+Combine predicates using `and`/`or`, use different operators and walk associations to build more complex predicates:
 
 ```json
 {
   "op": "or",
   "args": [
     {
-      "op": "in",
-      "path": "assettype_id",
-      "arg": [
-        "062e602a-3c38-46a3-b463-237e3767a5aa",
-        "4fe40528-aeba-48b3-b1e0-9eebed63f1a0"
-      ]
-    },
-    {
-      "op": "ilike",
-      "path": "name",
-      "arg": "NamePart"
+      "op": "eq",
+      "path": "type_id",
+      "arg": "062e602a-3c38-46a3-b463-237e3767a5aa"
     },
     {
       "op": "in",
-      "path": "zonetree_id",
-      "arg": [
-        "6a1c62fd-424d-4e33-a569-5ffabdc7cba7",
-        "a9897811-1d9d-4cf7-89a5-f3b0d530687b"
-      ]
+      "path": "zone_id",
+      "arg": ["zone_1", "zone_2"]
     },
     {
       "op": "and",
       "args": [
         {
           "op": "ilike",
-          "path": "tokens.token",
-          "arg": "special-token"
-        },
-        {
-          "op": "eq",
-          "path": "asset_labels.label",
-          "arg": "in-use-label"
+          "path": "single_assoc.name",
+          "arg": "Some Query String"
         },
         {
           "op": "any",
-          "path": "asset_associates",
+          "path": "multi_association",
           "arg": {
             "op": "eq",
-            "path": "asset_labels.associate_id",
+            "path": "settings.nested.key",
             "arg": "associate-id-0815"
           }
         }
@@ -71,19 +64,45 @@ For example:
 }
 ```
 
-### Possible Operations are:
+## Operators
 
-#### Comparator Predicate:
+### Operator Overview
 
-Exact compare of a argument against a stored value
+- Generic Comparators
+  - `eq`: Value at `path` equals `arg`
+  - `not_eq`: Value at `path` not equals `arg`
+- Numeric Comparators
+  - `lt`: Value at `path` is less than `arg`
+  - `le`: Value at `path` is less than or equal to `arg`
+  - `gt`: Value at `path` is greater than `arg`
+  - `ge`: Value at `path` is greater than or equal to `arg`
+- String Comparators
+  - `like`: Value at `path` contains `arg`, case sensitive
+  - `ilike`: Value at `path` contains `arg`, case insensitive
+  - `starts_with`: Value at `path` starts with `arg`, case sensitive
+  - `end_width`: Value at `path` ends with `arg`, case sensitive
+- List Comparators
+  - `in`: (Single) value at `path` is in the (multiple) values of `arg`
+  - `not_in`: (Single) value at `path` is not in the (multiple) values of `arg`
+- Conjunctions
+  - `and`: Combines multiple predicates s.t. all of them must be fulfilled
+  - `or`: Combines multiple predicates s.t. one of them must be fulfilled
+- Negation
+  - `not`: Negates a sub-predicate
+- Quantor
+  - `any`: Sub-predicate matches for any of the associated entities
 
-**Params:**
+### Generic Comparators: `eq` & `not_eq`
 
-- **`op`** _`String` enum: `eq`_: The operation for an exact compare
-- **`path`** _`String`_: The field name or the path to the key. This can be a path inside a json field or the path through connected/related tables
-- **`arg`** _`String | Number | Boolean`_: The value to compare the stored data against
+Evaluates to true if the stored value exactly matches/doesn't match the provided argument. These operators are null-safe (see below).
 
-**Simple Example:**
+#### Params
+
+- **`op`**: `eq` | `not_eq`
+- **`path`** _`String`_: The field name or the path
+- **`arg`** _`String | Number | Boolean | null`_: The value to compare the stored data against
+
+#### Example
 
 ```json
 {
@@ -93,21 +112,21 @@ Exact compare of a argument against a stored value
 }
 ```
 
-#### Numeric Comparator Predicates:
+### Numeric Comparators: `gt`, `ge`, `lt` & `le`
 
-Execute a numeric compare operation of a value against a stored value.
+Evaluates to true if the stored value is greater than (`gt`)/greater than or equal (`ge`)/less than (`lt`)/less than or equal (`le`) the provided argument. These operators are **not** null-safe (see below).
 
-**Params:**
+The comparator uses the database's comparators `<`, `<=`, `>` & `>=`.
 
-- **`op`** _`String` enum: `gt` | `ge` | `lt` | `le`_: The operation for the numeric compare
-  - _`gt`_: Greater than
-  - _`ge`_: Greater or equal than
-  - _`lt`_: Lower than
-  - _`le`_: Lower or equal than
-- **`path`** _`String`_: The field name or the path to the key. This can be a path inside a json field or the path through connected/related tables
-- **`arg`** _`Number`_: The value to process the operation against the stored value
+If `path` points to a model field with of either `:utc_datetime` or `:utc_datetime_usec`, PredicateConverter annotates the `arg` to increase the compatibility of user-provided values.
 
-**Example:**
+#### Params
+
+- **`op`**: `gt` | `ge` | `lt` | `le`
+- **`path`** _`String`_: The field name or the path
+- **`arg`** _`Number`_: The value to compare the stored value against
+
+#### Example
 
 ```json
 {
@@ -117,19 +136,17 @@ Execute a numeric compare operation of a value against a stored value.
 }
 ```
 
-#### String Comparator Predicates:
+### String Comparators: `like`, `ilike`, `starts_with` & `ends_with`
 
-Execute a sting search operation of a value against a stored value.
+Evaluates to true if the stored string contains (`like`)/contains ignoring casing (`ilike`)/starts with (`starts_with`)/ends with `ends_with` the provided argument. These operators are **not** null-safe (see below).
 
-**Params:**
+#### Params
 
-- **`op`** _`String` enum: `like` | `ilike` _: The operation for the string based compare operations
-  - _`like`_: Case sensitive test if parts of the `arg` are contained within the stored value
-  - _`ilike`_: Case insensitive test if parts of the `arg` are contained within the stored value
-- **`path`** _`String`_: The field name or the path to the key. This can be a path inside a json field or the path through connected/related tables
-- **`arg`** _`String`_: The value to process the operation against the stored value
+- **`op`**: `like` | `ilike` | `starts_with` | `ends_with`
+- **`path`** _`String`_: The field name or the path
+- **`arg`** _`String`_: The value to process the operation against the stored value. Placeholder characters (`%` and `_`) are escaped.
 
-**Example:**
+#### Example
 
 ```json
 {
@@ -139,24 +156,22 @@ Execute a sting search operation of a value against a stored value.
 }
 ```
 
-#### List Comparator Predicates:
+### List Comparators: `in` & `not_in`
 
-Compare operation to check if (ot not) a value is part of a given list
+Evaluates to true if the stored value is included in (`in`)/is not included in (`not_in`) the list of provided arguments. These operators are null-safe (see below.)
 
-**Params:**
+#### Params
 
-- **`op`** _`String` enum: `in` | `not_in` _: The operation to test if one of the given values in args exactly/not exists matches the stored value
-  - _`in`_: check if the stored value is within the list in `arg`
-  - _`not_in`_: check if the stored value is NOT within the list in `arg`
-- **`path`** _`String`_: The field name or the path to the key. This can be a path inside a json field or the path through connected/related tables
-- **`arg`** _`String[]`_: The list of values to test against the stored value
+- **`op`**: `in` | `not_in`
+- **`path`** _`String`_: The field name or the path
+- **`arg`** _`(String | Number | Boolean | null)[]`_: The list of values to test against the stored value. Non-list arg values are wrapped automatically.
 
-**Example:**
+##### Example
 
 ```json
 {
   "op": "in",
-  "path": "assettype_id",
+  "path": "type_id",
   "arg": [
     "062e602a-3c38-46a3-b463-237e3767a5aa",
     "4fe40528-aeba-48b3-b1e0-9eebed63f1a0"
@@ -164,7 +179,9 @@ Compare operation to check if (ot not) a value is part of a given list
 }
 ```
 
-#### Contains Comparator Predicates:
+#### Contains Comparator: `contains`
+
+**Deprecation**: Using `contains` with string values is deprecated, use `like` instead.
 
 Compare operation to check if a stored value or a list of values contains a single or a list of values.
 In case of a simple stored value it'll fallback to a basic string comparator.
@@ -172,8 +189,8 @@ If the stored value is a json the postgres [containment operators](https://www.p
 
 **Params:**
 
-- **`op`** _`String` enum: `contains`_: The operation to test if the given single or all given values as list are existent in the stored value or list of values.
-- **`path`** _`String`_: The field name or the path to the key. This can be a path inside a json field or the path through connected/related tables
+- **`op`**: `contains`
+- **`path`** _`String`_: The field name or the path
 - **`arg`** _`String | String[]`_: The list of values to test against the stored value.
 
 **Example:**
@@ -186,16 +203,18 @@ If the stored value is a json the postgres [containment operators](https://www.p
 }
 ```
 
-#### Junctor Predicate:
+#### Conjunction Operators: `and` & `or`
 
-To build complex query with specific "and" and "or" conditions it's possible to nest predicates.
+Evaluates to true when all (`and`)/any (`or`) sub-predicates are true.
 
-**Params:**
+When given an empty list for `args`, `and` evaluates to true, while `or` evaluates to false.
 
-- **`op`** _`String` enum: `and` | `or`_: The junctor operation to process the nested predicates in `arg`
-- **`args`** _`Predicate[]`_: The list of predicates to combine with a `and` or `or` predicate
+#### Params
 
-**Example:**
+- **`op`**: `and` | `or`
+- **`args`** _`Predicate[]`_: The list of predicates to combine
+
+#### Example
 
 ```json
 {
@@ -203,7 +222,7 @@ To build complex query with specific "and" and "or" conditions it's possible to 
   "args": [
     {
       "op": "eq",
-      "path": "assettype_id",
+      "path": "type_id",
       "arg": "062e602a-3c38-46a3-b463-237e3767a5aa"
     },
     {
@@ -215,44 +234,47 @@ To build complex query with specific "and" and "or" conditions it's possible to 
 }
 ```
 
-#### Negation Predicate:
+### Negation Operator: `not`
 
-Invert the results of a sub predicate
+Evaluates to true when the sub-predicate is false.
+For operators that define an inverse operation (e.g. `eq` & `not_eq`, `in` & `not_in`), prefer using those to avoid unexpected results if null values are involved (see [Null Values](#null-values-1)).
 
-**Params:**
+#### Params
 
-- **`op`** _`String` enum: `not`_: The operation to invert a sub predicate
+- **`op`**: `not`
 - **`arg`** _`Predicate`_: A sub predicate to invert
 
-**Example:**
+#### Example
 
 ```json
 {
   "op": "not",
   "arg": {
     "op": "eq",
-    "path": "assettype_id",
+    "path": "type_id",
     "arg": "062e602a-3c38-46a3-b463-237e3767a5aa"
   }
 }
 ```
 
-#### Quantor Predicate:
+### Quantor Operator: `any`
 
-A predicate to look into values of associated data.
+Evaluates to true if the sub-predicate is true for any of the associated entities.
+The `any` operator is also implicitly introduced when walking a 1-to-many association using `.`-path notation.
 
-**Params:**
+The sub-predicate is evaluated within the scope of the target entity, meaning that a path of `""` targets the relationship destination itself, and `"id"` targets the `id` column of the related entity.
 
-- **`op`** _`String` enum: `any`_: The operation to traverse into associates sub data. Identical to using a dot separated path
-- **`path`** _`String`_: The field name holding the associated data.
-- **`arg`** _`Predicate`_: A sub predicate to process against the associated sub data. Here the current `path` of this any predicate is no longer relevant and the sub predicate has to use the fields of the associated schema directly
+#### Params
 
-**Example:**
+- **`path`** _`String`_: The field name holding the associated data
+- **`arg`** _`Predicate`_: A sub predicate to process against the associated data
+
+#### Example
 
 ```json
 {
   "op": "any",
-  "path": "assettype",
+  "path": "uploads",
   "arg": {
     "op": "eq",
     "path": "id",
@@ -261,10 +283,49 @@ A predicate to look into values of associated data.
 }
 ```
 
+## <a id="null-values-1"></a> Null Values
+
+In SQL, handling NULL values can lead to unexpected situations, as the result of comparisons with NULL are always NULL and thus falsy. E.g., a simple _equals_ check `field = 'foo'` is false if `field` is NULL, but `field != 'foo'` is also false.
+
+This library tried to handle this circumstance by adding the appropriate comparisons to the underlying query. This is particularly relevant to `not_eq` and `not_in`, which would incorrectly omit results if not taken care of.
+
+However, this special handling is not applied when negating `eq` or `in` through `not`. I.e, the following two predicates are not the same (if NULL values are involved), because `not_eq` does include record with `type_id IS NULL`, while `not + eq` doesn't.
+
+```json
+{
+  "op": "not_eq",
+  "path": "type_id",
+  "arg": "38d5f5b4-d2f0-5ef6-b72c-b69d49196b11"
+}
+// not the same if NULL values are involved:
+{
+  "op": "not",
+  "arg": {
+    "op": "eq",
+    "path": "type_id",
+    "arg": "38d5f5b4-d2f0-5ef6-b72c-b69d49196b11"
+  }
+}
+```
+
+If operators are not stated as being _null-safe_, then there is no special treatment of NULL values for those operators.
+
+## Path Resolution
+
+## Virtual Fields
+
+## Multi-Tenancy
+
+## Limitations
+
+### Compatibility
+
+This library was implemented targeting PostgreSQL and uses JSON path or array containment operators that might be
+incompatible with other databases. Feel free to open a PR with extended support.
+
 ## Installation
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `ecto_predicates` to your list of dependencies in `mix.exs`:
+The package can be installed by adding `ecto_predicates` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
@@ -272,20 +333,9 @@ def deps do
     {:ecto_predicates, "~> 0.1.0"}
   ]
 end
-
- defp aliases do
-    [
-      "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
-      "ecto.reset": ["ecto.drop", "ecto.setup"]
-    ]
-  end
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at <https://hexdocs.pm/ecto_predicates>.
-
-## Run Test
+## Run Tests
 
 To run the tests, follow these steps:
 
