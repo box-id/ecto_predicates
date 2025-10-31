@@ -389,6 +389,9 @@ defmodule Predicates.PredicateConverter do
       else: dynamic(^query or is_nullish(^db_field))
   end
 
+  defp convert_not_in(field, value) when not is_list(value),
+    do: convert_not_in(field, List.wrap(value))
+
   defp convert_not_in({:single, field}, value) do
     # `nil` values will never match with `NOT IN` operator, so we need to handle them separately.
     {values, nil_values} = Enum.split_with(value, &(!is_nil(&1)))
