@@ -696,6 +696,24 @@ defmodule PredicatesTest do
     end
   end
 
+  describe "conjunctions" do
+    test "empty args for 'and' evals to true" do
+      Predicates.Repo.insert_all(Author, [%{name: "Goethe"}, %{name: "Schiller"}])
+
+      assert 2 ==
+               Converter.build_query(Author, %{"op" => "and", "args" => []})
+               |> Predicates.Repo.aggregate(:count)
+    end
+
+    test "empty args for 'or' evals to false" do
+      Predicates.Repo.insert_all(Author, [%{name: "Goethe"}, %{name: "Schiller"}])
+
+      assert 0 ==
+               Converter.build_query(Author, %{"op" => "or", "args" => []})
+               |> Predicates.Repo.aggregate(:count)
+    end
+  end
+
   describe "pattern escaping" do
     for op <- ["like", "ilike", "starts_with", "ends_with"] do
       test "uses escaped patterns for #{op} operator" do
