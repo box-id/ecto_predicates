@@ -19,13 +19,11 @@ defmodule PredicateToSQL.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:plug, "~> 1.10"},
       {:ecto_sql, "~> 3.12"},
-      {:assertions, "~> 0.20", only: [:dev, :test]},
       {:ok, "~> 2.3.0"},
-      {:postgrex, "~> 0.15"},
-      {:jason, "~> 1.2"},
-      {:ecto_enum, "~> 1.4"},
+      {:plug, "~> 1.10", optional: true},
+      {:postgrex, "~> 0.15", only: [:dev, :test]},
+      {:assertions, "~> 0.20", only: [:dev, :test]},
       {:mix_test_watch, "~> 1.0", only: [:dev, :test], runtime: false}
     ]
   end

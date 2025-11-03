@@ -26,6 +26,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `contains` operator for string values: Use `like` instead, as `contains` will only be applicable to collections in the
   future.
 
+### Changed
+
+- `PredicateError`'s message now uses `inspect` on the offending predicate instead of JSON serialization to reduce
+  library dependencies
+
 ## [0.4.0] - 2025-09-25
 
 ### Breaking Changes

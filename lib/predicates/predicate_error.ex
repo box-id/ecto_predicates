@@ -13,14 +13,13 @@ defmodule Predicates.PredicateError do
   def message(%{message: message}), do: message
 
   defp format_predicate(predicate) do
-    case Jason.encode(predicate, pretty: true) do
-      {:ok, json} -> json
-      {:error, _} -> inspect(predicate)
-    end
+    inspect(predicate, pretty: true, limit: :infinity)
   end
 
-  defimpl Plug.Exception do
-    def status(_exception), do: 400
-    def actions(_exception), do: []
+  if Code.ensure_loaded?(Plug) do
+    defimpl Plug.Exception do
+      def status(_exception), do: 400
+      def actions(_exception), do: []
+    end
   end
 end
