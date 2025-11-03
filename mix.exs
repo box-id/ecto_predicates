@@ -22,6 +22,7 @@ defmodule PredicateToSQL.MixProject do
       {:ecto_sql, "~> 3.12"},
       {:ok, "~> 2.3.0"},
       {:plug, "~> 1.10", optional: true},
+      {:jason, "~> 1.4", only: [:dev, :test]},
       {:postgrex, "~> 0.15", only: [:dev, :test]},
       {:assertions, "~> 0.20", only: [:dev, :test]},
       {:mix_test_watch, "~> 1.0", only: [:dev, :test], runtime: false}
