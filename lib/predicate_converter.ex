@@ -1,6 +1,8 @@
 defmodule Predicates.PredicateConverter do
   @moduledoc """
   Converts a predicate map into an Ecto query.
+
+  See [Ecto Predicates](README.md) for details on its capabilities and the predicate format.
   """
 
   import Ecto.Query
@@ -65,7 +67,7 @@ defmodule Predicates.PredicateConverter do
       |> where(^dynamic_query)
   """
   @spec convert_query(queryable :: Ecto.Queryable.t(), predicate :: map(), query :: map()) ::
-          Macro.t()
+          Ecto.Query.dynamic_expr()
   def convert_query(queryable, predicate, query \\ %{})
 
   # Junctor Predicates

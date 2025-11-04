@@ -1,4 +1,13 @@
 defmodule Predicates.PredicateError do
+  @moduledoc """
+  Exception raised for errors related to predicate processing.
+
+  Contains the offending predicate for easier debugging, so beware of leaking sensitive structural information if
+  propagating the error to end-users.
+
+  If Plug is available, it implements the `Plug.Exception` protocol to return a 400 status code.
+  """
+
   defexception [:message, :predicate]
 
   def message(%{message: message, predicate: predicate}) when not is_nil(predicate) do

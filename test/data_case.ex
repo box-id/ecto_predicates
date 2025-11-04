@@ -1,6 +1,4 @@
 defmodule Predicates.DataCase do
-  @moduledoc false
-
   use ExUnit.CaseTemplate
 
   using do
