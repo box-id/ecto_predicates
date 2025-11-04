@@ -1,4 +1,4 @@
-defmodule PredicateToSQL.MixProject do
+defmodule Predicates.MixProject do
   use Mix.Project
 
   def project do
@@ -8,7 +8,19 @@ defmodule PredicateToSQL.MixProject do
       elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      aliases: aliases()
+      aliases: aliases(),
+
+      # Docs
+      name: "Ecto Predicates",
+      source_url: "https://github.com/box-id/ecto_predicates",
+      docs: &docs/0
+    ]
+  end
+
+  def docs do
+    [
+      main: "readme",
+      extras: ["README.md", "Operators.md"]
     ]
   end
 
@@ -22,6 +34,8 @@ defmodule PredicateToSQL.MixProject do
       {:ecto_sql, "~> 3.12"},
       {:ok, "~> 2.3.0"},
       {:plug, "~> 1.10", optional: true},
+      {:ex_doc, "~> 0.39", only: :dev, runtime: false, warn_if_outdated: true},
+      {:makeup_json, "~> 1.0", only: :dev},
       {:jason, "~> 1.4", only: [:dev, :test]},
       {:postgrex, "~> 0.15", only: [:dev, :test]},
       {:assertions, "~> 0.20", only: [:dev, :test]},

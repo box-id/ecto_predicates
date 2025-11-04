@@ -1,6 +1,6 @@
 defmodule Predicates.PredicateConverter do
   @moduledoc """
-  Convert a predicate map into an Ecto query.
+  Converts a predicate map into an Ecto query.
   """
 
   import Ecto.Query
@@ -16,7 +16,22 @@ defmodule Predicates.PredicateConverter do
     end
   end
 
-  # create a ecto query from the given predicates
+  @doc """
+  Filters an Ecto queryable based on the given predicate map.
+
+  If the queryable does not already have a named binding for the table name of the schema, it will be added.
+
+  ## Example
+
+      queryable
+      |> Predicates.PredicateConverter.build_query(%{
+        "op" => "and",
+        "args" => [
+          %{"op" => "eq", "path" => "status", "arg" => "active"},
+          %{"op" => "gt", "path" => "age", "arg" => 18}
+        ]
+      }, query_context)
+  """
   @spec build_query(queryable :: Ecto.Queryable.t(), predicate :: map(), query :: map()) ::
           Ecto.Query.t()
   def build_query(queryable, predicate, query \\ %{})
@@ -35,7 +50,20 @@ defmodule Predicates.PredicateConverter do
     where(queryable, ^convert_query(queryable, predicate, query))
   end
 
-  # create dynamic ecto queries fragments from the given predicates.
+  @doc """
+  Creates an query fragment based on the given predicate map that can be used in Ecto's `where()`.
+
+  ## Example
+
+      dynamic_query = Predicates.PredicateConverter.convert_query(queryable, %{
+        "op" => "eq",
+        "path" => "status",
+        "arg" => "active"
+      })
+
+      queryable
+      |> where(^dynamic_query)
+  """
   @spec convert_query(queryable :: Ecto.Queryable.t(), predicate :: map(), query :: map()) ::
           Macro.t()
   def convert_query(queryable, predicate, query \\ %{})
