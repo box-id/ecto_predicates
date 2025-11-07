@@ -1,4 +1,8 @@
 defmodule Predicates.Utils do
+  @moduledoc """
+  Collection of utility functions used by the library.
+  """
+
   @doc """
   Tries to call a function (given as a function ref or `{Module, :name}` tuple) with as many arguments from `args` as
   possible, retrying with fewer arguments if the function call fails.
@@ -11,6 +15,11 @@ defmodule Predicates.Utils do
   When using Module + function atoms, the call can fail with `UndefinedFunctionError` if the function does not exist or
   `FunctionClauseError` if the function exists but cannot be called with the minimum number of given arguments.
   """
+  @spec safe_call(
+          fun :: function() | {module :: atom(), function :: atom()},
+          args :: [any()],
+          min_args :: non_neg_integer()
+        ) :: any()
   def safe_call(fun, args, min_args \\ 0)
 
   def safe_call(fun, args, min_args) when is_function(fun) do
@@ -38,5 +47,15 @@ defmodule Predicates.Utils do
       else
         reraise error, __STACKTRACE__
       end
+  end
+
+  @doc """
+  Escapes a user-provided search string to be used in a LIKE/ILIKE pattern.
+
+  It does not add any wildcards characters to the beginning/end of the input.
+  """
+  @spec search_to_like_pattern(search :: String.t()) :: String.t()
+  def search_to_like_pattern(search) when is_binary(search) do
+    String.replace(search, ~r/([%_])/, "\\\\\\1")
   end
 end

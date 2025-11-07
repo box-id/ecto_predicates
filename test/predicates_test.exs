@@ -11,16 +11,16 @@ defmodule PredicatesTest do
     use Ecto.Schema
 
     schema "pred_posts" do
-      field(:name, :string)
-      field(:likes, :integer)
-      field(:publisher_id, :string)
-      field(:meta, :map, default: %{})
+      field :name, :string
+      field :likes, :integer
+      field :publisher_id, :string
+      field :meta, :map, default: %{}
 
-      field(:slug, :string, virtual: true)
+      field :slug, :string, virtual: true
 
-      belongs_to(:author, PredicatesTest.Author)
+      belongs_to :author, PredicatesTest.Author
 
-      timestamps(type: :utc_datetime)
+      timestamps type: :utc_datetime
     end
 
     def migrate do
@@ -51,16 +51,13 @@ defmodule PredicatesTest do
     use Ecto.Schema
 
     schema "pred_authors" do
-      field(:name, :string)
-      field(:meta, :map, default: %{})
+      field :name, :string
+      field :meta, :map, default: %{}
+      field :birthday, :utc_datetime
+      field :post_count, :integer, virtual: true
+      field :oldest_post, :utc_datetime, virtual: true
 
-      field(:post_count, :integer, virtual: true)
-
-      field(:birthday, :utc_datetime)
-
-      field(:oldest_post, :utc_datetime, virtual: true)
-
-      has_many(:posts, Post)
+      has_many :posts, Post
     end
 
     def migrate do
@@ -78,7 +75,6 @@ defmodule PredicatesTest do
     def get_virtual_field(:post_count, %{"publisher_id" => publisher_id}),
       do:
         dynamic(
-          [author],
           subquery(
             from(p in Post,
               where:
@@ -91,7 +87,6 @@ defmodule PredicatesTest do
     def get_virtual_field(:oldest_post),
       do:
         dynamic(
-          [author],
           subquery(
             from(p in Post,
               where: p.author_id == parent_as(:pred_authors).id,
@@ -116,11 +111,19 @@ defmodule PredicatesTest do
   setup :create_tables
 
   describe "operators" do
-    test "queries by string equals on string field" do
+    test "queries by string equals/not-equals on string field" do
       Predicates.Repo.insert_all(Author, [%{name: "Goethe"}, %{name: "Schiller"}])
 
       assert %{name: "Goethe"} =
                Converter.build_query(Author, %{"op" => "eq", "path" => "name", "arg" => "Goethe"})
+               |> Predicates.Repo.one()
+
+      assert %{name: "Schiller"} =
+               Converter.build_query(Author, %{
+                 "op" => "not_eq",
+                 "path" => "name",
+                 "arg" => "Goethe"
+               })
                |> Predicates.Repo.one()
     end
 
@@ -180,6 +183,27 @@ defmodule PredicatesTest do
     end
 
     test "comparing virtual fields with dates given as ISO string works" do
+      {2, [goethe, schiller]} =
+        Predicates.Repo.insert_all(Author, [%{name: "Goethe"}, %{name: "Schiller"}],
+          returning: true
+        )
+
+      Predicates.Repo.insert_all(
+        Post,
+        [
+          %{
+            author_id: goethe.id,
+            name: "Die Laune des Verliebten",
+            inserted_at: ~U[1767-01-01T12:00:00Z]
+          },
+          %{
+            author_id: goethe.id,
+            name: "Die Mitschuldigen",
+            inserted_at: ~U[1769-01-01T12:00:00Z]
+          }
+        ]
+      )
+
       # Assert that it works for all relevant operators
       assert [] ==
                Converter.build_query(Author, %{
@@ -188,6 +212,15 @@ defmodule PredicatesTest do
                  "arg" => "1750-01-01T00:00:00.000+0200"
                })
                |> Predicates.Repo.all()
+
+      assert_lists_equal [goethe, schiller],
+                         Converter.build_query(Author, %{
+                           "op" => "not_eq",
+                           "path" => "oldest_post",
+                           "arg" => "1750-01-01T00:00:00.000+0200"
+                         })
+                         |> Predicates.Repo.all(),
+                         &assert_maps_equal(&1, &2, [:id, :name])
 
       assert [] ==
                Converter.build_query(Author, %{
@@ -205,7 +238,7 @@ defmodule PredicatesTest do
                })
                |> Predicates.Repo.all()
 
-      assert [] ==
+      assert [goethe] ==
                Converter.build_query(Author, %{
                  "op" => "ge",
                  "path" => "oldest_post",
@@ -213,7 +246,7 @@ defmodule PredicatesTest do
                })
                |> Predicates.Repo.all()
 
-      assert [] ==
+      assert [goethe] ==
                Converter.build_query(Author, %{
                  "op" => "gt",
                  "path" => "oldest_post",
@@ -229,13 +262,14 @@ defmodule PredicatesTest do
                })
                |> Predicates.Repo.all()
 
-      assert [] ==
-               Converter.build_query(Author, %{
-                 "op" => "not_in",
-                 "path" => "oldest_post",
-                 "arg" => ["1750-01-01T00:00:00.000+0200"]
-               })
-               |> Predicates.Repo.all()
+      assert_lists_equal [goethe, schiller],
+                         Converter.build_query(Author, %{
+                           "op" => "not_in",
+                           "path" => "oldest_post",
+                           "arg" => ["1750-01-01T00:00:00.000+0200"]
+                         })
+                         |> Predicates.Repo.all(),
+                         &assert_maps_equal(&1, &2, [:id, :name])
     end
 
     test "array in/not_in with integer array works" do
@@ -261,7 +295,7 @@ defmodule PredicatesTest do
                |> Predicates.Repo.all()
     end
 
-    test "handling of null values in json fields" do
+    test "handling of null values in json fields and eq/not_eq operators" do
       Predicates.Repo.insert_all(Author, [
         %{name: "Goethe", meta: %{"wealthy" => true}},
         %{name: "Mann", meta: %{"wealthy" => nil}},
@@ -276,29 +310,186 @@ defmodule PredicatesTest do
                })
                |> Predicates.Repo.all()
 
-      assert_lists_equal(
-        [%{name: "Schiller"}, %{name: "Mann"}],
-        Converter.build_query(Author, %{
-          "op" => "eq",
-          "path" => "meta.wealthy",
-          "arg" => nil
-        })
-        |> Predicates.Repo.all(),
-        &assert_maps_equal(&1, &2, [:name])
+      assert [] ==
+               Converter.build_query(Author, %{
+                 "op" => "eq",
+                 "path" => "meta.wealthy",
+                 "arg" => "foo"
+               })
+               |> Predicates.Repo.all()
+
+      assert_lists_equal [%{name: "Schiller"}, %{name: "Mann"}],
+                         Converter.build_query(Author, %{
+                           "op" => "eq",
+                           "path" => "meta.wealthy",
+                           "arg" => nil
+                         })
+                         |> Predicates.Repo.all(),
+                         &assert_maps_equal(&1, &2, [:name])
+
+      assert [%{name: "Goethe"}] =
+               Converter.build_query(Author, %{
+                 "op" => "not_eq",
+                 "path" => "meta.wealthy",
+                 "arg" => nil
+               })
+               |> Predicates.Repo.all()
+
+      assert_lists_equal [%{name: "Schiller"}, %{name: "Mann"}],
+                         Converter.build_query(Author, %{
+                           "op" => "not_eq",
+                           "path" => "meta.wealthy",
+                           "arg" => true
+                         })
+                         |> Predicates.Repo.all(),
+                         &assert_maps_equal(&1, &2, [:name])
+
+      assert_lists_equal [%{name: "Schiller"}, %{name: "Mann"}, %{name: "Goethe"}],
+                         Converter.build_query(Author, %{
+                           "op" => "not_eq",
+                           "path" => "meta.wealthy",
+                           "arg" => "foo"
+                         })
+                         |> Predicates.Repo.all(),
+                         &assert_maps_equal(&1, &2, [:name])
+    end
+
+    test "handling of null values in json fields and in/not_in operators" do
+      {3, [goethe, mann, schiller]} =
+        Predicates.Repo.insert_all(
+          Author,
+          [
+            %{name: "Goethe", meta: %{"wealthy" => true}, birthday: ~U[1749-08-28T00:00:00Z]},
+            %{name: "Mann", meta: %{"wealthy" => nil}, birthday: nil},
+            %{name: "Schiller", meta: %{}}
+          ],
+          returning: true
+        )
+
+      Predicates.Repo.insert_all(
+        Post,
+        [
+          %{
+            author_id: goethe.id,
+            name: "Post 1",
+            inserted_at: ~U[1767-01-01T12:00:00Z]
+          },
+          %{
+            author_id: goethe.id,
+            name: "Post 2",
+            inserted_at: ~U[1767-01-02T12:00:00Z]
+          }
+        ]
       )
 
-      # Nil checks are special-cased on `eq` operator and not supported on other operators, which is why Schiller and
-      # Mann are missing from the following results.
+      # Single test
+      assert_lists_equal [goethe],
+                         Converter.build_query(Author, %{
+                           "op" => "in",
+                           "path" => "birthday",
+                           "arg" => [~U[1749-08-28T00:00:00Z]]
+                         })
+                         |> Predicates.Repo.all(),
+                         &assert_maps_equal(&1, &2, [:name])
+
+      assert_lists_equal [goethe, schiller, mann],
+                         Converter.build_query(Author, %{
+                           "op" => "in",
+                           "path" => "birthday",
+                           "arg" => [~U[1749-08-28T00:00:00Z], nil]
+                         })
+                         |> Predicates.Repo.all(),
+                         &assert_maps_equal(&1, &2, [:name])
+
+      assert_lists_equal [schiller, mann],
+                         Converter.build_query(Author, %{
+                           "op" => "in",
+                           "path" => "birthday",
+                           "arg" => [nil]
+                         })
+                         |> Predicates.Repo.all(),
+                         &assert_maps_equal(&1, &2, [:name])
+
+      assert_lists_equal [schiller, mann],
+                         Converter.build_query(Author, %{
+                           "op" => "not_in",
+                           "path" => "birthday",
+                           "arg" => [~U[1749-08-28T00:00:00Z]]
+                         })
+                         |> Predicates.Repo.all(),
+                         &assert_maps_equal(&1, &2, [:name])
+
+      assert_lists_equal [],
+                         Converter.build_query(Author, %{
+                           "op" => "not_in",
+                           "path" => "birthday",
+                           "arg" => [~U[1749-08-28T00:00:00Z], nil]
+                         })
+                         |> Predicates.Repo.all(),
+                         &assert_maps_equal(&1, &2, [:name])
+
+      assert_lists_equal [goethe],
+                         Converter.build_query(Author, %{
+                           "op" => "not_in",
+                           "path" => "birthday",
+                           "arg" => [nil]
+                         })
+                         |> Predicates.Repo.all(),
+                         &assert_maps_equal(&1, &2, [:name])
+
+      # Virtual test
+      assert_lists_equal [schiller, mann],
+                         Converter.build_query(
+                           Author,
+                           %{
+                             "op" => "in",
+                             "path" => "oldest_post",
+                             "arg" => [nil]
+                           }
+                         )
+                         |> Predicates.Repo.all(),
+                         &assert_maps_equal(&1, &2, [:name])
+
+      assert_lists_equal [goethe],
+                         Converter.build_query(
+                           Author,
+                           %{
+                             "op" => "not_in",
+                             "path" => "oldest_post",
+                             "arg" => [nil]
+                           }
+                         )
+                         |> Predicates.Repo.all(),
+                         &assert_maps_equal(&1, &2, [:name])
+
+      # JSON field tests
       assert [%{name: "Goethe"}] =
                Converter.build_query(Author, %{
                  "op" => "in",
                  "path" => "meta.wealthy",
-                 "arg" => [true, nil]
+                 "arg" => [true]
                })
                |> Predicates.Repo.all()
 
-      # Interesting enough, `not_in` is not the inverse of `in` if null values are involved:
-      assert [] =
+      assert_lists_equal [%{name: "Schiller"}, %{name: "Mann"}, %{name: "Goethe"}],
+                         Converter.build_query(Author, %{
+                           "op" => "in",
+                           "path" => "meta.wealthy",
+                           "arg" => [true, nil]
+                         })
+                         |> Predicates.Repo.all(),
+                         &assert_maps_equal(&1, &2, [:name])
+
+      assert_lists_equal [%{name: "Mann"}, %{name: "Schiller"}],
+                         Converter.build_query(Author, %{
+                           "op" => "not_in",
+                           "path" => "meta.wealthy",
+                           "arg" => [true]
+                         })
+                         |> Predicates.Repo.all(),
+                         &assert_maps_equal(&1, &2, [:name])
+
+      assert [] ==
                Converter.build_query(Author, %{
                  "op" => "not_in",
                  "path" => "meta.wealthy",
@@ -365,6 +556,31 @@ defmodule PredicatesTest do
                  "op" => "contains",
                  "path" => "meta.tags",
                  "arg" => ["fizz", "bar"]
+               })
+               |> Predicates.Repo.one()
+    end
+
+    test "starts_with and ends_with operators" do
+      Predicates.Repo.insert_all(Author, [
+        %{name: "Goethe"},
+        %{name: "Schiller"},
+        %{name: "Schmidt"}
+      ])
+
+      assert_lists_equal [%{name: "Schiller"}, %{name: "Schmidt"}],
+                         Converter.build_query(Author, %{
+                           "op" => "starts_with",
+                           "path" => "name",
+                           "arg" => "Sch"
+                         })
+                         |> Predicates.Repo.all(),
+                         &assert_maps_equal(&1, &2, [:name])
+
+      assert %{name: "Goethe"} =
+               Converter.build_query(Author, %{
+                 "op" => "ends_with",
+                 "path" => "name",
+                 "arg" => "the"
                })
                |> Predicates.Repo.one()
     end
@@ -471,6 +687,53 @@ defmodule PredicatesTest do
                  }
                })
                |> Predicates.Repo.one()
+    end
+  end
+
+  describe "conjunctions" do
+    test "empty args for 'and' evals to true" do
+      Predicates.Repo.insert_all(Author, [%{name: "Goethe"}, %{name: "Schiller"}])
+
+      assert 2 ==
+               Converter.build_query(Author, %{"op" => "and", "args" => []})
+               |> Predicates.Repo.aggregate(:count)
+    end
+
+    test "empty args for 'or' evals to false" do
+      Predicates.Repo.insert_all(Author, [%{name: "Goethe"}, %{name: "Schiller"}])
+
+      assert 0 ==
+               Converter.build_query(Author, %{"op" => "or", "args" => []})
+               |> Predicates.Repo.aggregate(:count)
+    end
+  end
+
+  describe "pattern escaping" do
+    for op <- ["like", "ilike", "starts_with", "ends_with"] do
+      test "uses escaped patterns for #{op} operator" do
+        Predicates.Repo.insert_all(Author, [
+          %{name: "Goethe"},
+          %{name: "Schiller"},
+          %{name: "Sch%ller"},
+          %{name: "Sch_ller"}
+        ])
+
+        assert [%{name: "Sch%ller"}] =
+                 Converter.build_query(Author, %{
+                   "op" => unquote(op),
+                   "path" => "name",
+                   "arg" => "Sch%ller"
+                 })
+                 |> Predicates.Repo.all()
+
+        assert [%{name: "Sch_ller"}] =
+                 Converter.build_query(Author, %{
+                   "op" => unquote(op),
+                   "path" => "name",
+                   "arg" => "Sch_ller"
+                 })
+                 |> Predicates.Repo.all()
+      end
     end
   end
 

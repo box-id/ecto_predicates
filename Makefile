@@ -10,5 +10,9 @@ test:
 	echo "Running tests"
 	mix test
 
+test-watch:
+	echo "Running test watch"
+	mix test.watch
+
  compose-up:
 	docker compose up

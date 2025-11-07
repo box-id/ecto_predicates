@@ -1,7 +1,5 @@
 defmodule Predicates.SchemaHelpers do
-  @moduledoc """
-  Helper functions for extracting information from a schemas
-  """
+  @moduledoc false
 
   alias Predicates.PredicateError
 
