@@ -188,23 +188,21 @@ defmodule PredicatesTest do
           returning: true
         )
 
-      {2, [post_1, post_2]} =
-        Predicates.Repo.insert_all(
-          Post,
-          [
-            %{
-              author_id: goethe.id,
-              name: "Die Laune des Verliebten",
-              inserted_at: ~U[1767-01-01T12:00:00Z]
-            },
-            %{
-              author_id: goethe.id,
-              name: "Die Mitschuldigen",
-              inserted_at: ~U[1769-01-01T12:00:00Z]
-            }
-          ],
-          returning: true
-        )
+      Predicates.Repo.insert_all(
+        Post,
+        [
+          %{
+            author_id: goethe.id,
+            name: "Die Laune des Verliebten",
+            inserted_at: ~U[1767-01-01T12:00:00Z]
+          },
+          %{
+            author_id: goethe.id,
+            name: "Die Mitschuldigen",
+            inserted_at: ~U[1769-01-01T12:00:00Z]
+          }
+        ]
+      )
 
       # Assert that it works for all relevant operators
       assert [] ==
@@ -368,23 +366,21 @@ defmodule PredicatesTest do
           returning: true
         )
 
-      {2, [post_1, post_2]} =
-        Predicates.Repo.insert_all(
-          Post,
-          [
-            %{
-              author_id: goethe.id,
-              name: "Post 1",
-              inserted_at: ~U[1767-01-01T12:00:00Z]
-            },
-            %{
-              author_id: goethe.id,
-              name: "Post 2",
-              inserted_at: ~U[1767-01-02T12:00:00Z]
-            }
-          ],
-          returning: true
-        )
+      Predicates.Repo.insert_all(
+        Post,
+        [
+          %{
+            author_id: goethe.id,
+            name: "Post 1",
+            inserted_at: ~U[1767-01-01T12:00:00Z]
+          },
+          %{
+            author_id: goethe.id,
+            name: "Post 2",
+            inserted_at: ~U[1767-01-02T12:00:00Z]
+          }
+        ]
+      )
 
       # Single test
       assert_lists_equal [goethe],
