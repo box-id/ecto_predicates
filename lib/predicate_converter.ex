@@ -345,12 +345,12 @@ defmodule Predicates.PredicateConverter do
     # `nil` values will never match with `IN` operator, so we need to handle them separately.
     {values, nil_values} = Enum.split_with(value, &(!is_nil(&1)))
 
-    db_field = dynamic([q], field(q, ^field))
-    query = dynamic(^db_field in ^values)
+    # Inline field/2 to propagate type info to "not in" operator (important for UUIDs)
+    query = dynamic([q], field(q, ^field) in ^values)
 
     if nil_values == [],
       do: query,
-      else: dynamic(^query or is_nil(^db_field))
+      else: dynamic([q], ^query or is_nil(field(q, ^field)))
   end
 
   defp convert_in({:virtual, field, type}, value) do
@@ -384,7 +384,8 @@ defmodule Predicates.PredicateConverter do
     {values, nil_values} = Enum.split_with(value, &(!is_nil(&1)))
 
     db_field = dynamic([q], field(q, ^field))
-    query = dynamic(^db_field not in ^values)
+    # Inline field/2 to propagate type info to "not in" operator (important for UUIDs)
+    query = dynamic([q], field(q, ^field) not in ^values)
 
     if nil_values == [],
       do: dynamic(^query or is_nil(^db_field)),
