@@ -369,7 +369,7 @@ defmodule Predicates.PredicateConverter do
     {values, nil_values} = Enum.split_with(value, &(!is_nil(&1)))
 
     db_field = dynamic([q], fragment("?#>?", field(q, ^field), ^path))
-    query = dynamic(^db_field in ^values)
+    query = dynamic(fragment("? = ANY(?)", ^db_field, ^values))
 
     if nil_values == [],
       do: query,
@@ -407,7 +407,7 @@ defmodule Predicates.PredicateConverter do
     {values, nil_values} = Enum.split_with(value, &(!is_nil(&1)))
 
     db_field = dynamic([q], fragment("?#>?", field(q, ^field), ^path))
-    query = dynamic(^db_field not in ^values)
+    query = dynamic(not fragment("? = ANY(?)", ^db_field, ^values))
 
     if nil_values == [],
       do: dynamic(^query or is_nullish(^db_field)),

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+## [0.5.1] - 2025-11-10
+
+### Fixed
+- Use `ANY()` operator for `in` and `not_in` predicates.
+
 ## [0.5.0] - 2025-10-31
 
 ### Breaking Changes
@@ -37,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Renamed `Utils` module to `Predicates.Utils` to avoid module name collision
 
-[unreleased]: https://github.com/box-id/ecto_predicates/compare/0.5.0...HEAD
+[unreleased]: https://github.com/box-id/ecto_predicates/compare/0.5.1...HEAD
+[0.5.1]: https://github.com/box-id/ecto_predicates/compare/0.5.0...0.5.1
 [0.5.0]: https://github.com/box-id/ecto_predicates/compare/0.4.0...0.5.0
 [0.4.0]: https://github.com/box-id/ecto_predicates/compare/0.3.0...0.4.0
