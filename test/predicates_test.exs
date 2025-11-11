@@ -56,6 +56,7 @@ defmodule PredicatesTest do
       field :birthday, :utc_datetime
       field :post_count, :integer, virtual: true
       field :oldest_post, :utc_datetime, virtual: true
+      field :oldest_post_object, :map, virtual: true
 
       has_many :posts, Post
     end
@@ -93,6 +94,26 @@ defmodule PredicatesTest do
               order_by: [asc: p.inserted_at],
               limit: 1,
               select: p.inserted_at
+            )
+          )
+        )
+
+    def get_virtual_field(:oldest_post_object),
+      do:
+        dynamic(
+          subquery(
+            from(p in Post,
+              where: p.author_id == parent_as(:pred_authors).id,
+              order_by: [asc: p.inserted_at],
+              limit: 1,
+              select:
+                fragment(
+                  """
+                    jsonb_build_object('id', ?, 'name', ?)
+                  """,
+                  p.id,
+                  p.name
+                )
             )
           )
         )
@@ -623,6 +644,66 @@ defmodule PredicatesTest do
                    "publisher_id" => "suhrkamp"
                  }
                )
+               |> Predicates.Repo.one()
+    end
+
+    test "resolves nested path for a virtual field" do
+      {2, [goethe, schiller]} =
+        Predicates.Repo.insert_all(Author, [%{name: "Goethe"}, %{name: "Schiller"}],
+          returning: true
+        )
+
+      Predicates.Repo.insert_all(
+        Post,
+        [
+          %{
+            author_id: goethe.id,
+            name: "Die Laune des Verliebten",
+            inserted_at: ~U[1767-01-01T12:00:00Z]
+          },
+          %{
+            author_id: goethe.id,
+            name: "Die Mitschuldigen",
+            inserted_at: ~U[1769-01-01T12:00:00Z]
+          },
+          %{
+            author_id: schiller.id,
+            name: "Kabale und Liebe",
+            inserted_at: ~U[1784-01-01T12:00:00Z]
+          }
+        ]
+      )
+
+      assert goethe ==
+               Converter.build_query(Author, %{
+                 "op" => "eq",
+                 "path" => "oldest_post_object.name",
+                 "arg" => "Die Laune des Verliebten"
+               })
+               |> Predicates.Repo.one()
+
+      assert schiller ==
+               Converter.build_query(Author, %{
+                 "op" => "not_eq",
+                 "path" => "oldest_post_object.name",
+                 "arg" => "Die Laune des Verliebten"
+               })
+               |> Predicates.Repo.one()
+
+      assert nil ==
+               Converter.build_query(Author, %{
+                 "op" => "not_in",
+                 "path" => "oldest_post_object.name",
+                 "arg" => ["Die Laune des Verliebten", "Kabale und Liebe"]
+               })
+               |> Predicates.Repo.one()
+
+      assert goethe ==
+               Converter.build_query(Author, %{
+                 "op" => "like",
+                 "path" => "oldest_post_object.name",
+                 "arg" => "Die"
+               })
                |> Predicates.Repo.one()
     end
 
