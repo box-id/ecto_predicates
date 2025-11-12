@@ -783,7 +783,6 @@ defmodule PredicatesTest do
                |> Predicates.Repo.one()
     end
 
-    @tag :focus
     test "errors for predicates with empty path (unless explicitly allowed)" do
       assert_raise PredicateError, "Empty path is not allowed", fn ->
         Converter.build_query(Author, %{
@@ -795,7 +794,6 @@ defmodule PredicatesTest do
       end
     end
 
-    @tag :focus
     test "errors when looking into nested field of virtual list of maps" do
       assert_raise PredicateError,
                    ~r"Can't use JSON path on virtual field 'total_tags' of type {:array, :map}, use explicit 'any' instead",
@@ -835,7 +833,6 @@ defmodule PredicatesTest do
                |> Predicates.Repo.one()
     end
 
-    @tag :focus
     test "works on stored list of values" do
       {2, [_post1, post2]} =
         Predicates.Repo.insert_all(
@@ -863,7 +860,6 @@ defmodule PredicatesTest do
                |> Predicates.Repo.all()
     end
 
-    @tag :focus
     test "works on virtual list of values" do
       {2, [goethe, _]} =
         Predicates.Repo.insert_all(Author, [%{name: "Goethe"}, %{name: "Schiller"}],
