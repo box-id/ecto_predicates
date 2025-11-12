@@ -169,7 +169,7 @@ The first path segment is converted to atom and looked-up on the model:
    values within the JSON structure.
 3. If the field is stored, its value is used for the comparison. The remaining path is discarded.
 4. If the field is a virtual field, PredicateConverter invokes `get_virtual_field` as described in [Virtual
-   Fields](#virtual-fields). The remaining path is discarded.
+   Fields](#virtual-fields).
 5. If the segment points to an association, an `any` predicate is created with the semantics of "is there a related
    entity for which the original predicate evaluates to true?". This behaves the same for both one-to-one and
    one-to-many relationships. The remaining path is applied to the related entity.
@@ -180,8 +180,7 @@ Virtual fields in Ecto are fields defined in your schema that do not exist in th
 useful for computed or derived values, such as combining multiple columns, formatting data, or performing temporary
 calculations.
 
-To allow PredicateConverter to use virtual fields, the schema module must implement a `get_virtual_field/2` (or `/1`)
-returning a query fragment that evaluates to a value.
+To allow PredicateConverter to use virtual fields, the schema module must implement a `get_virtual_field/2` (or `/1`) returning a query fragment that evaluates to a value. Special case for the `any` predicate is explained in the [Virtual fields in the `any` predicate](#virtual-fields-in-the-any-predicate)
 
 When using sub-queries, refer to to the parent query using the named binding from [Model Awareness](#model-awareness).
 
@@ -211,6 +210,20 @@ defmodule Author do
       )
     )
 end
+```
+
+### Virtual fields in the `any` predicate
+When virtual fields are used within the `any` predicate, the value must be wrapped and bound to `__value__`.
+The `get_virtual_field/2` (or `/1`) function in this case must return a subquery (not a dynamic query). Not following these (current) restrictions will result in an error.
+
+```elixir
+def get_virtual_field(:oldest_post_date, original_query), do:
+  subquery(
+      # ...
+      select: %{
+        __value__: value
+      }
+  )
 ```
 
 ## Multi-Tenancy

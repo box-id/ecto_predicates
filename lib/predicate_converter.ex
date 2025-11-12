@@ -97,27 +97,43 @@ defmodule Predicates.PredicateConverter do
   end
 
   # Quantor Predicate
-  def convert_query(queryable, %{"op" => "any", "path" => path, "arg" => sub_predicate}, meta) do
+  def convert_query(
+        queryable,
+        %{"op" => "any", "path" => path, "arg" => sub_predicate},
+        meta
+      ) do
     case process_path(queryable, path, meta) do
       {:assoc, field, _} ->
         convert_any({:assoc, field}, sub_predicate, queryable, meta)
 
+      {:single, field} ->
+        convert_any({:single, field}, sub_predicate, queryable, meta)
+
+      {:virtual, field, {:array, :map} = type, path} ->
+        convert_any({:virtual, field, type, path}, sub_predicate, queryable, meta)
+
       _ ->
         raise PredicateError,
-          message: "Operator 'any' is currently only supported on associations"
+          message: "Operator 'any' is not supported for this field"
     end
   end
 
   # Comparator Predicates
   def convert_query(queryable, %{"op" => op, "path" => path, "arg" => value} = predicate, meta) do
-    convert_comparator(op, process_path(queryable, path, meta), value, queryable, meta)
-  rescue
-    FunctionClauseError ->
-      # credo:disable-for-next-line Credo.Check.Warning.RaiseInsideRescue
-      raise PredicateError, message: "Operator #{inspect(op)} not supported", predicate: predicate
+    path = process_path(queryable, path, meta)
 
-    e ->
-      reraise e, __STACKTRACE__
+    try do
+      convert_comparator(op, path, value, queryable, meta)
+    rescue
+      FunctionClauseError ->
+        # credo:disable-for-next-line Credo.Check.Warning.RaiseInsideRescue
+        raise PredicateError,
+          message: "Operator #{inspect(op)} not supported",
+          predicate: predicate
+
+      e ->
+        reraise e, __STACKTRACE__
+    end
   end
 
   # Value Predicate
@@ -184,8 +200,9 @@ defmodule Predicates.PredicateConverter do
   defp convert_eq({:single, field}, nil),
     do: dynamic([q], is_nil(field(q, ^field)))
 
-  defp convert_eq({:virtual, field, _}, nil),
-    do: dynamic(is_nil(^field))
+  defp convert_eq({:virtual, field, _type, json_path}, nil) do
+    dynamic(is_nil(^maybe_use_path(field, json_path)))
+  end
 
   defp convert_eq({:json, field, path}, nil),
     do:
@@ -205,8 +222,8 @@ defmodule Predicates.PredicateConverter do
     dynamic([q], field(q, ^field) == ^value)
   end
 
-  defp convert_eq({:virtual, field, type}, value) do
-    dynamic(^field == ^maybe_cast(value, type))
+  defp convert_eq({:virtual, field, type, json_path}, value) do
+    dynamic(^maybe_use_path(field, json_path) == ^maybe_cast(value, type))
   end
 
   defp convert_eq({:json, field, path}, value),
@@ -219,8 +236,8 @@ defmodule Predicates.PredicateConverter do
   defp convert_not_eq({:single, field}, nil),
     do: dynamic([q], not is_nil(field(q, ^field)))
 
-  defp convert_not_eq({:virtual, field, _}, nil),
-    do: dynamic(not is_nil(^field))
+  defp convert_not_eq({:virtual, field, _, json_path}, nil),
+    do: dynamic(not is_nil(^maybe_use_path(field, json_path)))
 
   defp convert_not_eq({:json, field, path}, nil),
     do: dynamic([q], not is_nil(fragment("?#>>?", field(q, ^field), ^path)))
@@ -244,13 +261,17 @@ defmodule Predicates.PredicateConverter do
   defp convert_not_eq({:single, field}, value),
     do: dynamic([q], field(q, ^field) != ^value or is_nil(field(q, ^field)))
 
-  defp convert_not_eq({:virtual, field, type}, value),
-    do: dynamic(^field != ^maybe_cast(value, type) or is_nil(^field))
+  defp convert_not_eq({:virtual, field, type, json_path}, value),
+    do:
+      dynamic(
+        ^maybe_use_path(field, json_path) != ^maybe_cast(value, type) or
+          is_nil(^maybe_use_path(field, json_path))
+      )
 
   defp convert_gt({:single, field}, value), do: dynamic([q], field(q, ^field) > ^value)
 
-  defp convert_gt({:virtual, field, type}, value),
-    do: dynamic(^field > ^maybe_cast(value, type))
+  defp convert_gt({:virtual, field, type, json_path}, value),
+    do: dynamic(^maybe_use_path(field, json_path) > ^maybe_cast(value, type))
 
   defp convert_gt({:json, field, path}, value),
     do: dynamic([q], fragment("?#>? > ?", field(q, ^field), ^path, ^value))
@@ -258,16 +279,16 @@ defmodule Predicates.PredicateConverter do
   defp convert_ge({:single, field}, value),
     do: dynamic([q], field(q, ^field) >= ^value)
 
-  defp convert_ge({:virtual, field, type}, value),
-    do: dynamic(^field >= ^maybe_cast(value, type))
+  defp convert_ge({:virtual, field, type, json_path}, value),
+    do: dynamic(^maybe_use_path(field, json_path) >= ^maybe_cast(value, type))
 
   defp convert_ge({:json, field, path}, value),
     do: dynamic([q], fragment("?#>? >= ?", field(q, ^field), ^path, ^value))
 
   defp convert_lt({:single, field}, value), do: dynamic([q], field(q, ^field) < ^value)
 
-  defp convert_lt({:virtual, field, type}, value),
-    do: dynamic(^field < ^maybe_cast(value, type))
+  defp convert_lt({:virtual, field, type, json_path}, value),
+    do: dynamic(^maybe_use_path(field, json_path) < ^maybe_cast(value, type))
 
   defp convert_lt({:json, field, path}, value),
     do: dynamic([q], fragment("?#>? < ?", field(q, ^field), ^path, ^value))
@@ -275,8 +296,8 @@ defmodule Predicates.PredicateConverter do
   defp convert_le({:single, field}, value),
     do: dynamic([q], field(q, ^field) <= ^value)
 
-  defp convert_le({:virtual, field, type}, value),
-    do: dynamic(^field <= ^maybe_cast(value, type))
+  defp convert_le({:virtual, field, type, json_path}, value),
+    do: dynamic(^maybe_use_path(field, json_path) <= ^maybe_cast(value, type))
 
   defp convert_le({:json, field, path}, value),
     do: dynamic([q], fragment("?#>? <= ?", field(q, ^field), ^path, ^value))
@@ -284,7 +305,7 @@ defmodule Predicates.PredicateConverter do
   defp convert_like({:single, field}, value),
     do: dynamic([q], like(field(q, ^field), ^"%#{search_to_like_pattern(value)}%"))
 
-  defp convert_like({:virtual, field, _type}, value),
+  defp convert_like({:virtual, field, _type, _}, value),
     do: dynamic(like(type(^field, :string), ^"%#{search_to_like_pattern(value)}%"))
 
   defp convert_like({:json, field, path}, value),
@@ -297,7 +318,7 @@ defmodule Predicates.PredicateConverter do
   defp convert_ilike({:single, field}, value),
     do: dynamic([q], ilike(field(q, ^field), ^"%#{search_to_like_pattern(value)}%"))
 
-  defp convert_ilike({:virtual, field, _type}, value),
+  defp convert_ilike({:virtual, field, _type, _}, value),
     do: dynamic(ilike(type(^field, :string), ^"%#{search_to_like_pattern(value)}%"))
 
   defp convert_ilike({:json, field, path}, value),
@@ -316,8 +337,14 @@ defmodule Predicates.PredicateConverter do
   defp convert_starts_with({:single, field}, value),
     do: dynamic([q], like(field(q, ^field), ^"#{search_to_like_pattern(value)}%"))
 
-  defp convert_starts_with({:virtual, field, _type}, value),
-    do: dynamic(like(type(^field, :string), ^"#{search_to_like_pattern(value)}%"))
+  defp convert_starts_with({:virtual, field, _type, json_path}, value),
+    do:
+      dynamic(
+        like(
+          type(^maybe_use_path(field, json_path), :string),
+          ^"#{search_to_like_pattern(value)}%"
+        )
+      )
 
   defp convert_starts_with({:json, field, path}, value),
     do:
@@ -329,8 +356,14 @@ defmodule Predicates.PredicateConverter do
   defp convert_ends_with({:single, field}, value),
     do: dynamic([q], like(field(q, ^field), ^"%#{search_to_like_pattern(value)}"))
 
-  defp convert_ends_with({:virtual, field, _type}, value),
-    do: dynamic(like(type(^field, :string), ^"%#{search_to_like_pattern(value)}"))
+  defp convert_ends_with({:virtual, field, _type, json_path}, value),
+    do:
+      dynamic(
+        like(
+          type(^maybe_use_path(field, json_path), :string),
+          ^"%#{search_to_like_pattern(value)}%"
+        )
+      )
 
   defp convert_ends_with({:json, field, path}, value),
     do:
@@ -353,11 +386,11 @@ defmodule Predicates.PredicateConverter do
       else: dynamic([q], ^query or is_nil(field(q, ^field)))
   end
 
-  defp convert_in({:virtual, field, type}, value) do
+  defp convert_in({:virtual, field, type, json_path}, value) do
     # `nil` values will never match with `IN` operator, so we need to handle them separately.
     {values, nil_values} = Enum.split_with(value, &(!is_nil(&1)))
 
-    query = dynamic(^field in ^maybe_cast_array(values, type))
+    query = dynamic(^maybe_use_path(field, json_path) in ^maybe_cast_array(values, type))
 
     if nil_values == [],
       do: query,
@@ -392,15 +425,15 @@ defmodule Predicates.PredicateConverter do
       else: dynamic(^query and not is_nil(^db_field))
   end
 
-  defp convert_not_in({:virtual, field, type}, value) do
+  defp convert_not_in({:virtual, field, type, json_path}, value) do
     # `nil` values will never match with `NOT IN` operator, so we need to handle them separately.
     {values, nil_values} = Enum.split_with(value, &(!is_nil(&1)))
 
-    query = dynamic(^field not in ^maybe_cast_array(values, type))
+    query = dynamic(^maybe_use_path(field, json_path) not in ^maybe_cast_array(values, type))
 
     if nil_values == [],
-      do: dynamic(^query or is_nil(^field)),
-      else: dynamic(^query and not is_nil(^field))
+      do: dynamic(^query or is_nil(^maybe_use_path(field, json_path))),
+      else: dynamic(^query and not is_nil(^maybe_use_path(field, json_path)))
   end
 
   defp convert_not_in({:json, field, path}, value) do
@@ -442,6 +475,41 @@ defmodule Predicates.PredicateConverter do
     end
   end
 
+  defp convert_any({:single, field}, sub_predicate, queryable, meta) do
+    parent_table = get_table_name(queryable)
+
+    subquery =
+      from(
+        s in fragment("select unnest(?) as __element__", field(parent_as(^parent_table), ^field)),
+        select: s.__element__
+      )
+
+    subquery =
+      subquery
+      |> where(^convert_query(subquery, Map.put(sub_predicate, "path", :__element__), meta))
+
+    dynamic(exists(subquery))
+  end
+
+  defp convert_any({:virtual, field, {:array, :map}, _json_path}, sub_predicate, _queryable, meta) do
+    subquery =
+      subquery(
+        from(t in field,
+          select: %{
+            __element__: fragment("jsonb_array_elements(?)", t.__value__)
+          }
+        )
+      )
+
+    subquery =
+      subquery
+      |> where(
+        ^convert_query(subquery, sub_predicate, Map.put(meta, :__nested_virtual_json__, true))
+      )
+
+    dynamic(exists(subquery))
+  end
+
   defp maybe_cast(value, :utc_datetime), do: dynamic(type(^value, :utc_datetime))
   defp maybe_cast(value, :utc_datetime_usec), do: dynamic(type(^value, :utc_datetime_usec))
   defp maybe_cast(value, _), do: value
@@ -477,13 +545,23 @@ defmodule Predicates.PredicateConverter do
   defp build_sub_query(queryable, sub_predicate, query),
     do: build_query(queryable, sub_predicate, query)
 
-  # check for existing fields and throw an error if the field does not exist
+  # Used by convert_any({:single, ...) to anchor the sub-predicate on the special __element__ field
+  defp process_path(_queryable, :__element__, _meta), do: {:single, :__element__}
+
+  defp process_path(_queryable, "", _meta),
+    do: raise(PredicateError, message: "Empty path is not allowed")
+
   defp process_path(queryable, path, meta) when is_binary(path),
     do: process_path(queryable, String.split(path, ".", trim: true), meta)
 
   defp process_path(queryable, path, meta) when is_atom(path),
     do: process_path(queryable, [path], meta)
 
+  # Used by convert_any({:virtual, ...) for an array of maps to anchor the sub-predicate on the special __element__
+  # field
+  defp process_path(%Ecto.SubQuery{}, json_path, _meta), do: {:json, :__element__, json_path}
+
+  # check for existing fields and throw an error if the field does not exist
   # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defp process_path(queryable, [field | json_path], meta) do
     schema = get_schema(queryable)
@@ -517,7 +595,15 @@ defmodule Predicates.PredicateConverter do
             end
 
           type = get_virtual_field_type(schema, atom_field)
-          {:virtual, virtual_field, type}
+
+          if json_path != [] and type == {:array, :map},
+            do:
+              raise(PredicateError,
+                message:
+                  "Can't use JSON path on virtual field '#{field}' of type {:array, :map}, use explicit 'any' instead (remaining path: #{inspect(json_path)})"
+              )
+
+          {:virtual, virtual_field, type, json_path}
 
         Enum.member?(associations, atom_field) ->
           # it is an association field and we probably have a sub path into the associations
@@ -541,4 +627,9 @@ defmodule Predicates.PredicateConverter do
     ArgumentError ->
       raise PredicateError, message: "Field '#{field}' does not exist"
   end
+
+  defp maybe_use_path(field, []), do: field
+
+  defp maybe_use_path(field, json_path),
+    do: dynamic(fragment("?#>>?", ^field, ^json_path))
 end

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+### Breaking Changes
+- JSON path will now be used in full for virtual fields, instead of being cut off at the first section (for all virtual fields except a list of Maps).
+
+### Added
+- The `any` predicate has been added for single and virtual fields.
+
+### Changed
+- Empty `path` now throws an error in most cases. Exception: sub-predicates inside `any`.
+
 ## [0.5.0] - 2025-10-31
 
 ### Breaking Changes
