@@ -15,6 +15,7 @@ defmodule PredicatesTest do
       field :likes, :integer
       field :publisher_id, :string
       field :meta, :map, default: %{}
+      field :tags, {:array, :string}
 
       field :slug, :string, virtual: true
 
@@ -31,6 +32,7 @@ defmodule PredicatesTest do
         likes int DEFAULT 0,
         publisher_id text,
         meta jsonb DEFAULT '{}',
+        tags text[],
         author_id int REFERENCES pred_authors(id) ON DELETE CASCADE ON UPDATE CASCADE,
         inserted_at timestamp with time zone NOT NULL default now(),
         updated_at timestamp with time zone NOT NULL default now()
@@ -57,6 +59,7 @@ defmodule PredicatesTest do
       field :post_count, :integer, virtual: true
       field :oldest_post, :utc_datetime, virtual: true
       field :oldest_post_object, :map, virtual: true
+      field :total_tags, {:array, :map}, virtual: true
 
       has_many :posts, Post
     end
@@ -115,6 +118,35 @@ defmodule PredicatesTest do
                   p.name
                 )
             )
+          )
+        )
+
+    def get_virtual_field(:total_tags),
+      do:
+        subquery(
+          from(
+            a in subquery(
+              from(
+                t in subquery(
+                  from(p in Post,
+                    where: p.author_id == parent_as(:pred_authors).id,
+                    select: %{
+                      tag: fragment("unnest(?)", p.tags)
+                    }
+                  )
+                ),
+                select: %{
+                  tag: t.tag,
+                  count: count(t.tag)
+                },
+                group_by: t.tag
+              )
+            ),
+            select: %{
+              __value__:
+                fragment("jsonb_agg(jsonb_build_object('tag', ?, 'count', ?))", a.tag, a.count)
+                |> coalesce("[]")
+            }
           )
         )
   end
@@ -538,7 +570,7 @@ defmodule PredicatesTest do
                |> Predicates.Repo.all()
     end
 
-    test "using contains to check against array lists" do
+    test "using contains to check against JSON array lists" do
       Predicates.Repo.insert_all(Post, [
         %{name: "Post 1", likes: 13, meta: %{"tags" => ["foo", "bar"]}},
         %{name: "Post 2", likes: 42, meta: %{"tags" => ["fizz", "buzz"]}}
@@ -580,6 +612,13 @@ defmodule PredicatesTest do
                })
                |> Predicates.Repo.one()
     end
+
+    # FIXME: make sure we support these cases
+    # test "contains works for stored arrays" do
+    # end
+
+    # test "contains work for virtual arrays" do
+    # end
 
     test "starts_with and ends_with operators" do
       Predicates.Repo.insert_all(Author, [
@@ -647,7 +686,7 @@ defmodule PredicatesTest do
                |> Predicates.Repo.one()
     end
 
-    test "resolves nested path for a virtual field" do
+    test "resolves nested path for a virtual JSON field" do
       {2, [goethe, schiller]} =
         Predicates.Repo.insert_all(Author, [%{name: "Goethe"}, %{name: "Schiller"}],
           returning: true
@@ -707,7 +746,7 @@ defmodule PredicatesTest do
                |> Predicates.Repo.one()
     end
 
-    test "resolves path into json field" do
+    test "resolves path into stored JSON field" do
       Predicates.Repo.insert_all(Author, [%{name: "Goethe", meta: %{born: 1749}}])
 
       assert %{name: "Goethe"} =
@@ -743,6 +782,32 @@ defmodule PredicatesTest do
                })
                |> Predicates.Repo.one()
     end
+
+    @tag :focus
+    test "errors for predicates with empty path (unless explicitly allowed)" do
+      assert_raise PredicateError, "Empty path is not allowed", fn ->
+        Converter.build_query(Author, %{
+          "op" => "eq",
+          "path" => "",
+          "arg" => "foo"
+        })
+        |> Predicates.Repo.one()
+      end
+    end
+
+    @tag :focus
+    test "errors when looking into nested field of virtual list of maps" do
+      assert_raise PredicateError,
+                   ~r"Can't use JSON path on virtual field 'total_tags' of type {:array, :map}, use explicit 'any' instead",
+                   fn ->
+                     Converter.build_query(Author, %{
+                       "op" => "eq",
+                       "path" => "total_tags.count",
+                       "arg" => "drang"
+                     })
+                     |> Predicates.Repo.one()
+                   end
+    end
   end
 
   describe "any" do
@@ -768,6 +833,62 @@ defmodule PredicatesTest do
                  }
                })
                |> Predicates.Repo.one()
+    end
+
+    @tag :focus
+    test "works on stored list of values" do
+      {2, [_post1, post2]} =
+        Predicates.Repo.insert_all(
+          Post,
+          [
+            %{name: "Post 1", tags: ["sturm"]},
+            %{name: "Post 2", tags: ["sturm", "drang"]}
+          ],
+          returning: true
+        )
+
+      assert [post2] ==
+               Converter.build_query(
+                 Post,
+                 %{
+                   "op" => "any",
+                   "path" => "tags",
+                   "arg" => %{
+                     "op" => "eq",
+                     "path" => "",
+                     "arg" => "drang"
+                   }
+                 }
+               )
+               |> Predicates.Repo.all()
+    end
+
+    @tag :focus
+    test "works on virtual list of values" do
+      {2, [goethe, _]} =
+        Predicates.Repo.insert_all(Author, [%{name: "Goethe"}, %{name: "Schiller"}],
+          returning: true
+        )
+
+      Predicates.Repo.insert_all(Post, [
+        %{name: "Post 1", author_id: goethe.id, tags: ["sturm", "drang"]},
+        %{name: "Post 2", author_id: goethe.id, tags: ["sturm"]}
+      ])
+
+      assert [goethe] ==
+               Converter.build_query(
+                 Author,
+                 %{
+                   "op" => "any",
+                   "path" => "total_tags",
+                   "arg" => %{
+                     "op" => "eq",
+                     "path" => "count",
+                     "arg" => 2
+                   }
+                 }
+               )
+               |> Predicates.Repo.all()
     end
   end
 
