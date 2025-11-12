@@ -203,6 +203,22 @@ relationship destination itself, and `"id"` targets the `id` column of the relat
 }
 ```
 
+### Stored JSON arrays
+Stored JSON arrays can be referenced by including an empty `path` in the sub-predicate.
+
+The following example will search for an `"blue"` value inside the `"colors"` array:
+
+```json
+{
+  "op": "any",
+  "path": "colors",
+  "arg": {
+    "op": "eq",
+    "path": "",
+    "arg": "blue"
+  }
+}
+```
 ## Plain Value Predicate
 
 These special predicates always evaluate to true or false.
