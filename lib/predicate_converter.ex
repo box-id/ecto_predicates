@@ -200,7 +200,7 @@ defmodule Predicates.PredicateConverter do
   defp convert_eq({:single, field}, nil),
     do: dynamic([q], is_nil(field(q, ^field)))
 
-  defp convert_eq({:virtual, field, :map, json_path}, nil) do
+  defp convert_eq({:virtual, field, _type, json_path}, nil) do
     dynamic(is_nil(^maybe_use_path(field, json_path)))
   end
 
@@ -491,7 +491,7 @@ defmodule Predicates.PredicateConverter do
     dynamic(exists(subquery))
   end
 
-  defp convert_any({:virtual, field, {:array, :map}, json_path}, sub_predicate, queryable, meta) do
+  defp convert_any({:virtual, field, {:array, :map}, _json_path}, sub_predicate, _queryable, meta) do
     subquery =
       subquery(
         from(t in field,
