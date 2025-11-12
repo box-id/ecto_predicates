@@ -203,8 +203,9 @@ relationship destination itself, and `"id"` targets the `id` column of the relat
 }
 ```
 
-### Stored JSON arrays
-Stored JSON arrays can be referenced by including an empty `path` in the sub-predicate.
+### Stored arrays
+
+One-dimensional, native SQL arrays can be referenced by including an empty `path` in the sub-predicate.
 
 The following example will search for an `"blue"` value inside the `"colors"` array:
 
@@ -219,6 +220,7 @@ The following example will search for an `"blue"` value inside the `"colors"` ar
   }
 }
 ```
+
 ## Plain Value Predicate
 
 These special predicates always evaluate to true or false.
