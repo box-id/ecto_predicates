@@ -501,8 +501,6 @@ defmodule Predicates.PredicateConverter do
         )
       )
 
-    dbg()
-
     subquery =
       subquery
       |> where(
