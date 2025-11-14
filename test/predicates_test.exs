@@ -913,6 +913,30 @@ defmodule PredicatesTest do
                      |> Predicates.Repo.one()
                    end
     end
+
+    test "errors for predicates with empty path (unless explicitly allowed)" do
+      assert_raise PredicateError, "Empty path is not allowed", fn ->
+        Converter.build_query(Author, %{
+          "op" => "eq",
+          "path" => "",
+          "arg" => "foo"
+        })
+        |> Predicates.Repo.one()
+      end
+    end
+
+    test "errors when looking into nested field of virtual list of maps" do
+      assert_raise PredicateError,
+                   ~r"Can't use JSON path on virtual field 'total_tags' of type {:array, :map}, use explicit 'any' instead",
+                   fn ->
+                     Converter.build_query(Author, %{
+                       "op" => "eq",
+                       "path" => "total_tags.count",
+                       "arg" => "drang"
+                     })
+                     |> Predicates.Repo.one()
+                   end
+    end
   end
 
   describe "any" do
