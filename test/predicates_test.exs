@@ -836,11 +836,10 @@ defmodule PredicatesTest do
     end
 
     test "walks association" do
-      {3, [goethe, schiller, lessing]} =
+      {2, [goethe, schiller]} =
         Predicates.Repo.insert_all(
           Author,
-          [%{name: "Goethe"}, %{name: "Schiller"}, %{name: "Lessing"}],
-          returning: true
+          [%{name: "Goethe"}, %{name: "Schiller"}]
         )
 
       Predicates.Repo.insert_all(Post, [
