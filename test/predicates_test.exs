@@ -644,6 +644,87 @@ defmodule PredicatesTest do
                })
                |> Predicates.Repo.one()
     end
+
+    test "nil handling in associations" do
+      {3, [goethe, schiller, lessing]} =
+        Predicates.Repo.insert_all(
+          Author,
+          [%{name: "Goethe"}, %{name: "Schiller"}, %{name: "Lessing"}],
+          returning: true
+        )
+
+      # logic test
+      Predicates.Repo.insert_all(Post, [
+        %{name: "Faust", author_id: goethe.id},
+        %{name: nil, author_id: schiller.id}
+      ])
+
+      # eq and not_eq tests
+      assert [schiller, lessing] =
+               Converter.build_query(Author, %{
+                 "op" => "eq",
+                 "path" => "posts.name",
+                 "arg" => nil
+               })
+               |> Predicates.Repo.all()
+
+      assert [goethe] =
+               Converter.build_query(Author, %{
+                 "op" => "not_eq",
+                 "path" => "posts.name",
+                 "arg" => nil
+               })
+               |> Predicates.Repo.all()
+
+      assert [goethe] =
+               Converter.build_query(Author, %{
+                 "op" => "eq",
+                 "path" => "posts.name",
+                 "arg" => "Faust"
+               })
+               |> Predicates.Repo.all()
+
+      assert [schiller, lessing] =
+               Converter.build_query(Author, %{
+                 "op" => "not_eq",
+                 "path" => "posts.name",
+                 "arg" => "Faust"
+               })
+               |> Predicates.Repo.all()
+
+      # in and not_in tests
+      assert [schiller, lessing] =
+               Converter.build_query(Author, %{
+                 "op" => "in",
+                 "path" => "posts.name",
+                 "arg" => [nil]
+               })
+               |> Predicates.Repo.all()
+
+      assert [goethe] =
+               Converter.build_query(Author, %{
+                 "op" => "not_in",
+                 "path" => "posts.name",
+                 "arg" => [nil]
+               })
+               |> Predicates.Repo.all()
+
+      assert [goethe] =
+               Converter.build_query(Author, %{
+                 "op" => "in",
+                 "path" => "posts.name",
+                 "arg" => ["Faust"]
+               })
+               |> Predicates.Repo.all()
+
+      assert [schiller, lessing] =
+               Converter.build_query(Author, %{
+                 "op" => "not_in",
+                 "path" => "posts.name",
+                 "arg" => ["Faust"]
+               })
+               |> Predicates.Repo.all()
+    end
   end
 
   test "supports shorthand true/false expressions" do
@@ -756,7 +837,9 @@ defmodule PredicatesTest do
 
     test "walks association" do
       {2, [goethe, schiller]} =
-        Predicates.Repo.insert_all(Author, [%{name: "Goethe"}, %{name: "Schiller"}],
+        Predicates.Repo.insert_all(
+          Author,
+          [%{name: "Goethe"}, %{name: "Schiller"}],
           returning: true
         )
 

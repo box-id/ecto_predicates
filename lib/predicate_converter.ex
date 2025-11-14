@@ -259,7 +259,11 @@ defmodule Predicates.PredicateConverter do
       )
 
   defp convert_not_eq({:single, field}, value),
-    do: dynamic([q], field(q, ^field) != ^value or is_nil(field(q, ^field)))
+    do:
+      dynamic(
+        [q],
+        field(q, ^field) != ^value or is_nil(field(q, ^field))
+      )
 
   defp convert_not_eq({:virtual, field, type, json_path}, value),
     do:
@@ -461,17 +465,32 @@ defmodule Predicates.PredicateConverter do
 
       sub_schema = get_schema(sub_association)
 
-      # define the subquery to execute the given predicates against the defined association
-      subquery =
+      association =
         from(s in sub_schema,
           select: 1,
           where:
             field(s, ^sub_association.related_key) ==
               field(parent_as(^parent_table_name), ^sub_association.owner_key)
         )
-        |> build_sub_query(sub_predicate, meta)
 
-      dynamic(exists(subquery))
+      subquery = build_sub_query(association, sub_predicate, meta)
+
+      cond do
+        sub_predicate["op"] == "not_eq" and not is_nil(sub_predicate["arg"]) ->
+          dynamic(exists(subquery) or not exists(association))
+
+        sub_predicate["op"] == "eq" and is_nil(sub_predicate["arg"]) ->
+          dynamic(exists(subquery) or not exists(association))
+
+        sub_predicate["op"] == "in" and Enum.any?(sub_predicate["arg"], &is_nil(&1)) ->
+          dynamic(exists(subquery) or not exists(association))
+
+        sub_predicate["op"] == "not_in" and not Enum.any?(sub_predicate["arg"], &is_nil(&1)) ->
+          dynamic(exists(subquery) or not exists(association))
+
+        true ->
+          dynamic(exists(subquery))
+      end
     end
   end
 
