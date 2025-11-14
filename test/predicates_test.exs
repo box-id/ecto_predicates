@@ -864,54 +864,6 @@ defmodule PredicatesTest do
                  "arg" => "Fau"
                })
                |> Predicates.Repo.one()
-
-      assert [schiller, goethe, lessing] =
-               Converter.build_query(Author, %{
-                 "op" => "eq",
-                 "path" => "posts.name",
-                 "arg" => nil
-               })
-               |> Predicates.Repo.all()
-
-      assert [schiller, lessing] =
-               Converter.build_query(Author, %{
-                 "op" => "not_eq",
-                 "path" => "posts.name",
-                 "arg" => "Faust"
-               })
-               |> Predicates.Repo.all()
-
-      assert lessing =
-               Converter.build_query(Author, %{
-                 "op" => "not_in",
-                 "path" => "posts.name",
-                 "arg" => ["Faust", "Maria Stuart"]
-               })
-               |> Predicates.Repo.all()
-    end
-
-    test "errors for predicates with empty path (unless explicitly allowed)" do
-      assert_raise PredicateError, "Empty path is not allowed", fn ->
-        Converter.build_query(Author, %{
-          "op" => "eq",
-          "path" => "",
-          "arg" => "foo"
-        })
-        |> Predicates.Repo.one()
-      end
-    end
-
-    test "errors when looking into nested field of virtual list of maps" do
-      assert_raise PredicateError,
-                   ~r"Can't use JSON path on virtual field 'total_tags' of type {:array, :map}, use explicit 'any' instead",
-                   fn ->
-                     Converter.build_query(Author, %{
-                       "op" => "eq",
-                       "path" => "total_tags.count",
-                       "arg" => "drang"
-                     })
-                     |> Predicates.Repo.one()
-                   end
     end
 
     test "errors for predicates with empty path (unless explicitly allowed)" do
