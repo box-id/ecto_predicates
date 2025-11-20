@@ -55,7 +55,13 @@ defmodule Predicates.Utils do
   It does not add any wildcards characters to the beginning/end of the input.
   """
   @spec search_to_like_pattern(search :: String.t()) :: String.t()
-  def search_to_like_pattern(search) when is_binary(search) do
-    String.replace(search, ~r/([%_])/, "\\\\\\1")
-  end
+  def search_to_like_pattern(search) when is_binary(search),
+    do: String.replace(search, ~r/([%_])/, "\\\\\\1")
+
+  def search_to_like_pattern(_search),
+    do:
+      raise(Predicates.PredicateError,
+        message:
+          "Argument is required to be a string for operators 'like/ilike/starts_with/ends_with'."
+      )
 end

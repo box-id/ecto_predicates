@@ -7,14 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
-### Breaking Changes
-- JSON path will now be used in full for virtual fields, instead of being cut off at the first section (for all virtual fields except a list of Maps).
+## [0.5.1] - 2025-11-20
 
-### Added
-- The `any` predicate has been added for single and virtual fields.
+### Bugfixes
 
-### Changed
-- Empty `path` now throws an error in most cases. Exception: sub-predicates inside `any`.
+- An error will now be correctly raised when unsupported arguments (non-strings) are passed as an argument to String comparators (`like`, `ilike`, `starts_with`, `ends_with`)
 
 ## [0.5.0] - 2025-10-31
 
@@ -24,11 +21,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `like`, `ilike`, `starts_with` operators now escape `arg` s.t. `%` and `_` characters are not interpreted as
   placeholders anymore.
 - Field names are now converted to atoms using `String.to_existing_atom/1`, failing for unknown field names.
+- JSON path will now be used in full for virtual fields, instead of being cut off at the first section (for all virtual fields except a list of Maps).
 
 ### Added
 
 - `not_eq` operator
 - `ends_with` operator
+- The `any` predicate has been added for single and virtual fields.
 
 ### Deprecated
 
@@ -39,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `PredicateError`'s message now uses `inspect` on the offending predicate instead of JSON serialization to reduce
   library dependencies
+- Empty `path` now throws an error in most cases. Exception: sub-predicates inside `any`.
 
 ## [0.4.0] - 2025-09-25
 
@@ -46,6 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Renamed `Utils` module to `Predicates.Utils` to avoid module name collision
 
-[unreleased]: https://github.com/box-id/ecto_predicates/compare/0.5.0...HEAD
+[unreleased]: https://github.com/box-id/ecto_predicates/compare/0.5.1...HEAD
+[0.5.1]: https://github.com/box-id/ecto_predicates/compare/0.5.0...0.5.1
 [0.5.0]: https://github.com/box-id/ecto_predicates/compare/0.4.0...0.5.0
 [0.4.0]: https://github.com/box-id/ecto_predicates/compare/0.3.0...0.4.0

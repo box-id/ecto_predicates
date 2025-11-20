@@ -932,6 +932,58 @@ defmodule PredicatesTest do
                  })
                  |> Predicates.Repo.all()
       end
+
+      test "unsupported values for #{op}" do
+        assert_raise PredicateError,
+                     "Argument is required to be a string for operators 'like/ilike/starts_with/ends_with'.",
+                     fn ->
+                       Converter.build_query(Author, %{
+                         "op" => unquote(op),
+                         "path" => "name",
+                         "arg" => nil
+                       })
+                     end
+
+        assert_raise PredicateError,
+                     "Argument is required to be a string for operators 'like/ilike/starts_with/ends_with'.",
+                     fn ->
+                       Converter.build_query(Author, %{
+                         "op" => unquote(op),
+                         "path" => "name",
+                         "arg" => 123
+                       })
+                     end
+
+        assert_raise PredicateError,
+                     "Argument is required to be a string for operators 'like/ilike/starts_with/ends_with'.",
+                     fn ->
+                       Converter.build_query(Author, %{
+                         "op" => unquote(op),
+                         "path" => "name",
+                         "arg" => %{"foo" => "bar"}
+                       })
+                     end
+
+        assert_raise PredicateError,
+                     "Argument is required to be a string for operators 'like/ilike/starts_with/ends_with'.",
+                     fn ->
+                       Converter.build_query(Author, %{
+                         "op" => unquote(op),
+                         "path" => "name",
+                         "arg" => ["foo", "bar"]
+                       })
+                     end
+
+        assert_raise PredicateError,
+                     "Argument is required to be a string for operators 'like/ilike/starts_with/ends_with'.",
+                     fn ->
+                       Converter.build_query(Author, %{
+                         "op" => unquote(op),
+                         "path" => "name",
+                         "arg" => true
+                       })
+                     end
+      end
     end
   end
 
