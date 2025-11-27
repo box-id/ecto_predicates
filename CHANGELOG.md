@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+## [0.6.0] - 2025-11-27
+
+### Added
+- Support for hooking into `build_assoc` functions when building subqueries on associations.
+- JSON schemas have been added for all predicates.
+
 ## [0.5.1] - 2025-11-20
 
 ### Bugfixes
@@ -46,7 +52,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Renamed `Utils` module to `Predicates.Utils` to avoid module name collision
 
-[unreleased]: https://github.com/box-id/ecto_predicates/compare/0.5.1...HEAD
+[unreleased]: https://github.com/box-id/ecto_predicates/compare/0.6.0...HEAD
+[0.6.0]: https://github.com/box-id/ecto_predicates/compare/0.5.1...0.6.0
 [0.5.1]: https://github.com/box-id/ecto_predicates/compare/0.5.0...0.5.1
 [0.5.0]: https://github.com/box-id/ecto_predicates/compare/0.4.0...0.5.0
 [0.4.0]: https://github.com/box-id/ecto_predicates/compare/0.3.0...0.4.0

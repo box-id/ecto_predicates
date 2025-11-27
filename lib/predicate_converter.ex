@@ -451,28 +451,33 @@ defmodule Predicates.PredicateConverter do
   defp convert_any({:assoc, field}, sub_predicate, queryable, meta) do
     schema = get_schema(queryable)
 
-    sub_association = get_association_field(schema, field)
+    subquery =
+      try do
+        safe_call({schema, :build_assoc}, [field, meta], 1)
+      rescue
+        [FunctionClauseError, UndefinedFunctionError] ->
+          sub_association = get_association_field(schema, field)
 
-    if is_nil(sub_association) do
-      raise PredicateError,
-        message: "Field '#{field}' in schema #{inspect(schema)} is not an association"
-    else
-      parent_table_name = get_table_name(sub_association.owner)
+          if is_nil(sub_association) do
+            raise PredicateError,
+              message: "Field '#{field}' in schema #{inspect(schema)} is not an association"
+          else
+            parent_table_name = get_table_name(sub_association.owner)
 
-      sub_schema = get_schema(sub_association)
+            sub_schema = get_schema(sub_association)
 
-      # define the subquery to execute the given predicates against the defined association
-      subquery =
-        from(s in sub_schema,
-          select: 1,
-          where:
-            field(s, ^sub_association.related_key) ==
-              field(parent_as(^parent_table_name), ^sub_association.owner_key)
-        )
-        |> build_sub_query(sub_predicate, meta)
+            # define the subquery to execute the given predicates against the defined association
+            from(s in sub_schema,
+              select: 1,
+              where:
+                field(s, ^sub_association.related_key) ==
+                  field(parent_as(^parent_table_name), ^sub_association.owner_key)
+            )
+          end
+      end
+      |> build_sub_query(sub_predicate, meta)
 
-      dynamic(exists(subquery))
-    end
+    dynamic(exists(subquery))
   end
 
   defp convert_any({:single, field}, sub_predicate, queryable, meta) do

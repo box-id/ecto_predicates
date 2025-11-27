@@ -174,6 +174,32 @@ The first path segment is converted to atom and looked-up on the model:
    entity for which the original predicate evaluates to true?". This behaves the same for both one-to-one and
    one-to-many relationships. The remaining path is applied to the related entity.
 
+### Hooking into `build_assoc` functions
+
+When walking associations, PredicateConverter by default creates subqueries that directly query the associated table. However, Ecto schemas may define `build_assoc/2` functions to customize the way associations are queried. 
+
+This function must accept the association name as an atom and an options map, and return an Ecto query that will be used as the basis for applying the predicate on the association.
+
+The following example shows how to define a custom `build_assoc` function for an association named `:prizes` on the `Author` schema.
+
+```elixir
+defmodule Author do
+  use Ecto.Schema
+
+  schema "authors" do
+    # fields …
+
+    has_many :prizes, Prize
+  end
+
+     def build_assoc(:prizes, _opts),
+      do:
+        from(p in Prizes,
+          where: p.author_id == parent_as(:pred_authors).id        
+        )
+end
+```
+
 ## Virtual Fields
 
 Virtual fields in Ecto are fields defined in your schema that do not exist in the database (`virtual: true`). They are

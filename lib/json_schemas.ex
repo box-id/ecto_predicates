@@ -165,7 +165,7 @@ defmodule Predicates.JSONSchemas do
     }
   end
 
-  def negation_operator do
+  def negation_operator() do
     %{
       "type" => "object",
       "properties" => %{
@@ -181,7 +181,7 @@ defmodule Predicates.JSONSchemas do
     }
   end
 
-  def conjunction_operators do
+  def conjunction_operators() do
     %{
       "type" => "object",
       "properties" => %{
@@ -205,7 +205,7 @@ defmodule Predicates.JSONSchemas do
     }
   end
 
-  def quantor_operator do
+  def quantor_operator() do
     %{
       "type" => "object",
       "properties" => %{
@@ -235,7 +235,7 @@ defmodule Predicates.JSONSchemas do
     }
   end
 
-  def plain_value_predicate do
+  def plain_value_predicate() do
     %{
       "type" => "object",
       "description" => "These special predicates always evaluate to true or false",
