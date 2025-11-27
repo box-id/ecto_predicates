@@ -195,8 +195,7 @@ defmodule Author do
      def build_assoc(:prizes, _opts),
       do:
         from(p in Prizes,
-          where: p.author_id == parent_as(:pred_authors).id,
-          select: p
+          where: p.author_id == parent_as(:pred_authors).id        
         )
 end
 ```
