@@ -176,13 +176,9 @@ defmodule PredicatesTest do
 
     def build_assoc(:prizes, meta),
       do:
-        subquery(
-          from(p in Prizes,
-            where: p.author_id == parent_as(:pred_authors).id,
-            select: %{
-              __element__: fragment("jsonb_build_object('name', ?, 'year', ?)", p.title, p.year)
-            }
-          )
+        from(p in Prizes,
+          where: p.author_id == parent_as(:pred_authors).id,
+          select: p
         )
   end
 
@@ -942,7 +938,7 @@ defmodule PredicatesTest do
                    "path" => "prizes",
                    "arg" => %{
                      "op" => "eq",
-                     "path" => "name",
+                     "path" => "title",
                      "arg" => "Nobel Prize"
                    }
                  }

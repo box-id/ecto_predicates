@@ -453,12 +453,7 @@ defmodule Predicates.PredicateConverter do
 
     subquery =
       try do
-        subquery = safe_call({schema, :build_assoc}, [field, meta], 1)
-
-        subquery
-        |> where(
-          ^convert_query(subquery, sub_predicate, Map.put(meta, :__nested_virtual_json__, true))
-        )
+        safe_call({schema, :build_assoc}, [field, meta], 1)
       rescue
         [FunctionClauseError, UndefinedFunctionError] ->
           sub_association = get_association_field(schema, field)
@@ -478,9 +473,9 @@ defmodule Predicates.PredicateConverter do
                 field(s, ^sub_association.related_key) ==
                   field(parent_as(^parent_table_name), ^sub_association.owner_key)
             )
-            |> build_sub_query(sub_predicate, meta)
           end
       end
+      |> build_sub_query(sub_predicate, meta)
 
     dynamic(exists(subquery))
   end
