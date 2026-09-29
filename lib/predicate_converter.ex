@@ -168,7 +168,7 @@ defmodule Predicates.PredicateConverter do
          convert_comparator(
            op,
            # here we reuse the virtual field conversion for string operations
-          {:virtual, dynamic([q], fragment("?::text", field(q, ^field))), :string, []}
+           {:virtual, dynamic([q], fragment("?::text", field(q, ^field))), :string, []},
            value,
            queryable,
            meta
@@ -627,8 +627,8 @@ defmodule Predicates.PredicateConverter do
           {:json, atom_field, json_path}
 
         Enum.member?(fields, atom_field) and ltree_field?(schema, atom_field) and json_path != [] ->
-           raise PredicateError,
-             message: "Can't use JSON path on ltree field '#{field}'"
+          raise PredicateError,
+            message: "Can't use JSON path on ltree field '#{field}'"
 
         Enum.member?(fields, atom_field) and ltree_field?(schema, atom_field) ->
           # field backed by a Postgres ltree column
