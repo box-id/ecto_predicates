@@ -382,7 +382,7 @@ defmodule Predicates.PredicateConverter do
       dynamic(
         like(
           type(^maybe_use_path(field, json_path), :string),
-          ^"%#{search_to_like_pattern(value)}%"
+          ^"%#{search_to_like_pattern(value)}"
         )
       )
 
