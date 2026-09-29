@@ -60,6 +60,9 @@ Values](README.md#null-values).
 - **`arg`** _`String`_: The value to process the operation against the stored value. Placeholder characters (`%` and
   `_`) are escaped.
 
+For [ltree fields](#hierarchy-comparators-descendant_of-ancestor_of--lquery), the stored path is cast to text before
+matching.
+
 #### Example
 
 ```json
@@ -147,6 +150,51 @@ When given an empty list for `args`, `and` evaluates to true, while `or` evaluat
       "arg": "PartOfTypeName"
     }
   ]
+}
+```
+
+## Hierarchy Comparators: `descendant_of`, `ancestor_of` & `lquery`
+
+Only available for fields backed by a Postgres [`ltree`](https://www.postgresql.org/docs/current/ltree.html) column.
+Evaluates to true if the stored path is a descendant of (`descendant_of`)/an ancestor of (`ancestor_of`) the provided
+path, or matches the provided [lquery](https://www.postgresql.org/docs/current/ltree.html#LTREE-LQUERY) pattern
+(`lquery`). `descendant_of` & `ancestor_of` are inclusive, i.e. a path is its own descendant and ancestor. If a list is
+provided, the comparator evaluates to true if any of the list items matches. These operators are **not** null-safe, see
+[Null Values](README.md#null-values).
+
+The comparators use the database's operators `<@`, `@>` & `~`, so they can use a GiST index on the field.
+
+A field counts as an ltree field if its Ecto type's `type/0` returns `:ltree`. Types that can't be detected this way
+(e.g. because their `type/0` returns something else) can be listed explicitly:
+
+```elixir
+config :ecto_predicates, ltree_types: [MyApp.Ecto.LTree]
+```
+
+The other comparators work on ltree fields as well. `eq`, `in`, `gt` etc. use ltree's native comparison. String
+comparators cast the field to text. ltree fields inside JSON paths and virtual ltree fields are not supported.
+
+#### Params
+
+- **`op`**: `descendant_of` | `ancestor_of` | `lquery`
+- **`path`** _`String`_: The field name
+- **`arg`** _`String | [String]`_: The ltree path(s) or lquery pattern(s) to test against the stored path
+
+#### Example
+
+```json
+{
+  "op": "descendant_of",
+  "path": "location_path",
+  "arg": "europe.germany"
+}
+```
+
+```json
+{
+  "op": "lquery",
+  "path": "location_path",
+  "arg": "*.berlin.*"
 }
 ```
 

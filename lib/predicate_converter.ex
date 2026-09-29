@@ -156,6 +156,27 @@ defmodule Predicates.PredicateConverter do
         meta
       )
 
+  # ltree fields: hierarchy operators are ltree-only, string operators need a text cast, everything else behaves like a
+  # regular field.
+  defp convert_comparator(op, {:ltree, field}, value, _queryable, _meta)
+       when op in ["descendant_of", "ancestor_of", "lquery"],
+       do: convert_ltree(op, field, value)
+
+  defp convert_comparator(op, {:ltree, field}, value, queryable, meta)
+       when op in ["like", "ilike", "starts_with", "ends_with", "contains"],
+       do:
+         convert_comparator(
+           op,
+           # here we reuse the virtual field conversion for string operations
+           {:virtual, dynamic([q], field(q, ^field)), :string, []},
+           value,
+           queryable,
+           meta
+         )
+
+  defp convert_comparator(op, {:ltree, field}, value, queryable, meta),
+    do: convert_comparator(op, {:single, field}, value, queryable, meta)
+
   # Handle Comparators
   defp convert_comparator("eq", target, value, _queryable, _meta),
     do: convert_eq(target, value)
@@ -448,6 +469,29 @@ defmodule Predicates.PredicateConverter do
       else: dynamic(^query and not is_nullish(^db_field))
   end
 
+  # A list of values matches if any of the values matches. Expanded into ORs (instead of `ANY(...)`) to keep the ltree
+  # GiST index usable.
+  defp convert_ltree(op, field, values) when is_list(values) do
+    Enum.reduce(values, dynamic(false), fn value, acc ->
+      dynamic(^acc or ^convert_ltree(op, field, value))
+    end)
+  end
+
+  defp convert_ltree("descendant_of", field, value) when is_binary(value),
+    do: dynamic([q], fragment("? <@ ?::ltree", field(q, ^field), ^value))
+
+  defp convert_ltree("ancestor_of", field, value) when is_binary(value),
+    do: dynamic([q], fragment("? @> ?::ltree", field(q, ^field), ^value))
+
+  defp convert_ltree("lquery", field, value) when is_binary(value),
+    do: dynamic([q], fragment("? ~ ?::lquery", field(q, ^field), ^value))
+
+  defp convert_ltree(op, _field, _value),
+    do:
+      raise(PredicateError,
+        message: "Argument for operator '#{op}' is required to be a string or a list of strings."
+      )
+
   defp convert_any({:assoc, field}, sub_predicate, queryable, meta) do
     schema = get_schema(queryable)
 
@@ -581,6 +625,10 @@ defmodule Predicates.PredicateConverter do
         get_field_type(schema, atom_field) == :map and json_path != [] ->
           # it is a regular field of type map -> json and we have a path to use a value within the json
           {:json, atom_field, json_path}
+
+        Enum.member?(fields, atom_field) and ltree_field?(schema, atom_field) ->
+          # field backed by a Postgres ltree column
+          {:ltree, atom_field}
 
         Enum.member?(fields, atom_field) ->
           # simple field of a non associated type

@@ -4,6 +4,9 @@ defmodule TestHelper do
   @moduledoc false
 
   Predicates.Repo.start_link()
+
+  # Created once outside of the sandbox, concurrent CREATE EXTENSION calls in async tests would conflict.
+  Predicates.Repo.query!("CREATE EXTENSION IF NOT EXISTS ltree")
   Ecto.Adapters.SQL.Sandbox.mode(Predicates.Repo, :manual)
 
   def rand_string(

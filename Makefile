@@ -14,5 +14,12 @@ test-watch:
 	echo "Running test watch"
 	mix test.watch
 
- compose-up:
-	docker compose up
+compose-up:
+	docker compose up --wait db
+
+compose-up-d: compose-up-deamon
+compose-up-deamon:
+	docker compose up --wait -d db
+
+compose-stop:
+	docker compose stop db
