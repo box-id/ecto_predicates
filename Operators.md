@@ -35,7 +35,8 @@ the `arg` to increase the compatibility of user-provided values.
 
 - **`op`**: `gt` | `ge` | `lt` | `le`
 - **`path`** _`String`_: The field name or the path
-- **`arg`** _`Number`_: The value to compare the stored value against
+- **`arg`** _`Number | String`_: The value to compare the stored value against. Strings are used for e.g. ISO 8601
+  dates on datetime fields or paths on [ltree fields](#hierarchy-comparators-descendant_of-ancestor_of--lquery)
 
 #### Example
 

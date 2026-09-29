@@ -63,8 +63,11 @@ defmodule Predicates.JSONSchemas do
           "description" => "The field name or the path."
         },
         "arg" => %{
-          "type" => "number",
-          "description" => "The numeric value to compare the stored data against."
+          "type" => ["number", "string"],
+          "description" => """
+          The value to compare the stored data against. Strings are used for fields with a natively ordered string
+          representation, e.g. ISO 8601 dates for datetime fields or paths for ltree fields.
+          """
         }
       },
       "required" => ["op", "path", "arg"],
