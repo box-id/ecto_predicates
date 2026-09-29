@@ -626,6 +626,10 @@ defmodule Predicates.PredicateConverter do
           # it is a regular field of type map -> json and we have a path to use a value within the json
           {:json, atom_field, json_path}
 
+        Enum.member?(fields, atom_field) and ltree_field?(schema, atom_field) and json_path != [] ->
+           raise PredicateError,
+             message: "Can't use JSON path on ltree field '#{field}'"
+
         Enum.member?(fields, atom_field) and ltree_field?(schema, atom_field) ->
           # field backed by a Postgres ltree column
           {:ltree, atom_field}
