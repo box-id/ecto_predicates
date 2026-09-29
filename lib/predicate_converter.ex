@@ -168,7 +168,7 @@ defmodule Predicates.PredicateConverter do
          convert_comparator(
            op,
            # here we reuse the virtual field conversion for string operations
-           {:virtual, dynamic([q], field(q, ^field)), :string, []},
+          {:virtual, dynamic([q], fragment("?::text", field(q, ^field))), :string, []}
            value,
            queryable,
            meta
