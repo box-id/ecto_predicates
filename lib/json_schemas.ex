@@ -159,9 +159,18 @@ defmodule Predicates.JSONSchemas do
           "description" => "The field name or the path."
         },
         "arg" => %{
-          "type" => "array",
-          "items" => [%{"type" => "string"}],
-          "description" => " The list of values to test against the stored value."
+          "oneOf" => [
+            %{
+              "type" => "string",
+              "description" =>
+                "The value to test against the stored value. Required for non-JSON fields, e.g. ltree fields."
+            },
+            %{
+              "type" => "array",
+              "items" => %{"type" => "string"},
+              "description" => "The list of values to test against the stored JSON value."
+            }
+          ]
         }
       },
       "required" => ["op", "path", "arg"],

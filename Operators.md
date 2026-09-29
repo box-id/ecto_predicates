@@ -111,7 +111,8 @@ operators](https://www.postgresql.org/docs/current/datatype-json.html#JSON-CONTA
 
 - **`op`**: `contains`
 - **`path`** _`String`_: The field name or the path
-- **`arg`** _`String | String[]`_: The list of values to test against the stored value.
+- **`arg`** _`String | String[]`_: The value(s) to test against the stored value. Lists are only supported for JSON
+  fields; other fields (including ltree fields) require a single string.
 
 **Example:**
 
