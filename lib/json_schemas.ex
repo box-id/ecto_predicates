@@ -10,6 +10,7 @@ defmodule Predicates.JSONSchemas do
         string_comparators(),
         list_comparators(),
         contains_comparator(),
+        ltree_comparators(),
         negation_operator(),
         conjunction_operators(),
         quantor_operator(),
@@ -62,8 +63,11 @@ defmodule Predicates.JSONSchemas do
           "description" => "The field name or the path."
         },
         "arg" => %{
-          "type" => "number",
-          "description" => "The numeric value to compare the stored data against."
+          "type" => ["number", "string"],
+          "description" => """
+          The value to compare the stored data against. Strings are used for fields with a natively ordered string
+          representation, e.g. ISO 8601 dates for datetime fields or paths for ltree fields.
+          """
         }
       },
       "required" => ["op", "path", "arg"],
@@ -155,9 +159,56 @@ defmodule Predicates.JSONSchemas do
           "description" => "The field name or the path."
         },
         "arg" => %{
-          "type" => "array",
-          "items" => [%{"type" => "string"}],
-          "description" => " The list of values to test against the stored value."
+          "oneOf" => [
+            %{
+              "type" => "string",
+              "description" =>
+                "The value to test against the stored value. Required for non-JSON fields, e.g. ltree fields."
+            },
+            %{
+              "type" => "array",
+              "items" => %{"type" => "string"},
+              "description" => "The list of values to test against the stored JSON value."
+            }
+          ]
+        }
+      },
+      "required" => ["op", "path", "arg"],
+      "additionalProperties" => false
+    }
+  end
+
+  def ltree_comparators() do
+    %{
+      "type" => "object",
+      "properties" => %{
+        "op" => %{
+          "type" => "string",
+          "enum" => ["descendant_of", "ancestor_of", "lquery"],
+          "description" => """
+          Only available for ltree fields. Evaluates to true if the stored path is a descendant of or equal to
+          (`descendant_of`)/is an ancestor of or equal to (`ancestor_of`)/matches the lquery pattern (`lquery`) of the
+          provided argument. With a list of arguments, evaluates to true if any of them matches.
+          """
+        },
+        "path" => %{
+          "type" => "string",
+          "description" => "The field name."
+        },
+        "arg" => %{
+          "oneOf" => [
+            %{
+              "type" => "string",
+              "description" =>
+                "The ltree path or lquery pattern to test against the stored value."
+            },
+            %{
+              "type" => "array",
+              "items" => %{"type" => "string"},
+              "description" =>
+                "The list of ltree paths or lquery patterns to test against the stored value."
+            }
+          ]
         }
       },
       "required" => ["op", "path", "arg"],

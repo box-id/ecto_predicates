@@ -676,6 +676,18 @@ defmodule PredicatesTest do
                })
                |> Predicates.Repo.one()
     end
+
+    test "ends_with operator on virtual field" do
+      Predicates.Repo.insert_all(Post, [%{name: "Hello World"}, %{name: "World Hello"}])
+
+      assert %{name: "Hello World"} =
+               Converter.build_query(Post, %{
+                 "op" => "ends_with",
+                 "path" => "slug",
+                 "arg" => "world"
+               })
+               |> Predicates.Repo.one()
+    end
   end
 
   test "supports shorthand true/false expressions" do

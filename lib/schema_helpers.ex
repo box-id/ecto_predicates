@@ -48,6 +48,26 @@ defmodule Predicates.SchemaHelpers do
 
   def get_virtual_field_type(schema, field), do: schema.__schema__(:virtual_type, field)
 
+  @doc """
+  Checks if the given field is backed by a Postgres `ltree` column.
+
+  A field is considered an ltree field if its Ecto type is listed in the `:ltree_types` config of `:ecto_predicates`
+  or if it is a custom Ecto type whose `type/0` returns `:ltree`.
+  """
+  def ltree_field?(schema, field) do
+    case get_field_type(schema, field) do
+      {:parameterized, {module, _params}} -> ltree_type?(module)
+      module when is_atom(module) -> ltree_type?(module)
+      _ -> false
+    end
+  end
+
+  defp ltree_type?(module) do
+    module in Application.get_env(:ecto_predicates, :ltree_types, []) or
+      (Code.ensure_loaded?(module) and function_exported?(module, :type, 0) and
+         module.type() == :ltree)
+  end
+
   def get_primary_key(schema), do: schema.__schema__(:primary_key)
 
   def get_schema_associations(schema), do: schema.__schema__(:associations)

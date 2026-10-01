@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+### Added
+- Support for Postgres `ltree` fields. Fields are detected by an Ecto type whose `type/0` returns `:ltree` or by listing
+  the type in `config :ecto_predicates, ltree_types: [...]`. String comparators cast ltree fields to text.
+- Hierarchy comparators `descendant_of`, `ancestor_of` & `lquery` for ltree fields.
+
+### Bugfixes
+- `ends_with` on virtual fields no longer behaves like `contains`.
+
 ## [0.6.0] - 2025-11-27
 
 ### Added
