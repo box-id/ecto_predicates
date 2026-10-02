@@ -303,7 +303,7 @@ The package can be installed by adding `ecto_predicates` to your list of depende
 ```elixir
 def deps do
   [
-    {:ecto_predicates, "~> 0.1.0"}
+    {:ecto_predicates, "~> 0.7.0"}
   ]
 end
 ```
