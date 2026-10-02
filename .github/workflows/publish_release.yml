@@ -12,7 +12,12 @@ on:
 jobs:
     release:
         name: Publish Release
+        if: github.ref == 'refs/heads/main'
         uses: box-id/github-actions-oss/.github/workflows/elixir_publish_release.yml@main
+        permissions:
+            contents: write
+            id-token: write
+            pull-requests: read
+            issues: read
         with:
             version-prefix: ""
-        secrets: inherit
