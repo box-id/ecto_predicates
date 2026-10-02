@@ -1,0 +1,32 @@
+{
+  "categories": [
+    {
+      "title": "## 🚨 Breaking Changes",
+      "labels": ["breaking"]
+    },
+    {
+      "title": "## ⚠️ Deprecations",
+      "labels": ["deprecation"]
+    },
+    {
+      "title": "## 🎉 Improvements",
+      "labels": ["improvement"]
+    },
+    {
+      "title": "## 🐞 Bug Fixes",
+      "labels": ["bug"]
+    },
+    {
+      "title": "## 🛠️ Other Changes",
+      "labels": ["*"]
+    }
+  ],
+  "transformers": [
+    {
+      "pattern": "^([A-Za-z]+-[0-9]+):? (.*)$",
+      "target": "$2 ([$1](https://box-id.atlassian.net/browse/$1))"
+    }
+  ],
+  "template": "#{{CHANGELOG}}**Full Changelog:** #{{RELEASE_DIFF}}",
+  "pr_template": "- #{{TITLE}} [##{{NUMBER}}](#{{URL}})"
+}

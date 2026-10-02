@@ -1,0 +1,18 @@
+name: 🔩 Publish Release (Auto)
+
+on:
+    push:
+        branches:
+            - main
+        paths:
+            - "mix.exs"
+    # Until this is proven, allow manual triggers
+    workflow_dispatch:
+
+jobs:
+    release:
+        name: Publish Release
+        uses: box-id/github-actions-oss/.github/workflows/elixir_publish_release.yml@main
+        with:
+            version-prefix: ""
+        secrets: inherit

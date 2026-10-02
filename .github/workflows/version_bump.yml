@@ -1,0 +1,12 @@
+name: 👉 Trigger Version Bump
+
+on:
+    workflow_dispatch:
+
+jobs:
+    create_version_bump_pr:
+        name: Create Version Bump PR
+        uses: box-id/github-actions-oss/.github/workflows/elixir_version_bump.yml@main
+        with:
+            version-prefix: ""
+        secrets: inherit
